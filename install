@@ -1,11 +1,12 @@
 # URL ZIP-файла
 $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
 
-# Получаем пути к папке загрузок и рабочему столу
-$downloadsPath = [System.Environment]::GetFolderPath("Downloads")
-$desktopPath = [System.Environment]::GetFolderPath("Desktop")
+# Получаем пути к папке загрузок и рабочему столу для текущего пользователя
+$userProfilePath = [System.Environment]::GetFolderPath("UserProfile")
+$downloadsPath = Join-Path -Path $userProfilePath -ChildPath "Downloads"
+$desktopPath = Join-Path -Path $userProfilePath -ChildPath "Desktop"
 
-# Локальный путь для сохранения ZIP-файла
+# Локальный путь для сохранения ZIP-файла в папке Загрузки
 $zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
 $logFilePath = Join-Path -Path $desktopPath -ChildPath "download_log.txt"
 
@@ -16,6 +17,7 @@ Function Log-Message {
     )
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     "$timestamp - $message" | Out-File -FilePath $logFilePath -Append
+    Write-Host $message  # Также выводим в консоль
 }
 
 # Функция для скачивания файла с повторной попыткой
@@ -30,10 +32,17 @@ Function Download-File {
 
     for ($i = 1; $i -le $attempts; $i++) {
         try {
-            Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
-            Log-Message "Файл успешно скачан: $savePath"
-            $success = $true
-            break
+            # Проверка доступности URL перед скачиванием
+            $response = Invoke-WebRequest -Uri $url -Method Head -ErrorAction Stop
+            if ($response.StatusCode -eq 200) {
+                Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
+                Log-Message "Файл успешно скачан: $savePath"
+                $success = $true
+                break
+            } else {
+                Log-Message "Ошибка: Файл не найден на сервере. Статус: $($response.StatusCode)"
+                exit 1
+            }
         } catch {
             Log-Message "Попытка $i из $attempts: Ошибка при скачивании файла: $_"
             if ($i -eq $attempts) {
@@ -41,7 +50,7 @@ Function Download-File {
                 exit 1
             }
         }
-        Start-Sleep -Seconds 2  # Пауза между попытками
+        Start-Sleep -Seconds (2 * $i)  # Увеличиваем задержку между попытками
     }
 }
 
@@ -56,15 +65,11 @@ Function Unpack-Zip {
         # Используем System.IO.Compression.ZipFile для распаковки
         [System.IO.Compression.ZipFile]::ExtractToDirectory($filePath, $extractTo)
         Log-Message "Файлы успешно распакованы в папку: $extractTo"
+        Remove-Item -Path $filePath -Force
+        Log-Message "ZIP-файл удален."
     } catch {
         Log-Message "Ошибка при распаковке файла: $_"
         exit 1
-    } finally {
-        # Удаляем ZIP-файл после распаковки
-        if (Test-Path $filePath) {
-            Remove-Item -Path $filePath -Force
-            Log-Message "ZIP-файл удален."
-        }
     }
 }
 
