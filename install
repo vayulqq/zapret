@@ -1,87 +1,32 @@
-# Функция для удаления файла, если он существует
-Function Remove-File {
-    param (
-        [string]$filePath
-    )
-    if (Test-Path $filePath) {
-        try {
-            Remove-Item -Path $filePath -Force -ErrorAction Stop
-        } catch {
-            Start-Sleep -Seconds 2
-            try {
-                Remove-Item -Path $filePath -Force -ErrorAction Stop
-            } catch {
-                exit 1
-            }
-        }
-    }
+# Путь до рабочего стола текущего пользователя
+$desktopPath = [System.Environment]::GetFolderPath('Desktop')
+
+# Пути к файлам и папкам
+$zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
+$zapretFolderPath = "$desktopPath\zapret"
+
+# URL для скачивания архива
+$zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
+
+# Проверка на наличие архива zapret.zip в папке "Загрузки" и папки zapret на рабочем столе
+if (Test-Path $zapretZipPath) {
+    # Если архив существует, распаковать его на рабочий стол
+    Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
+
+    # Удалить архив после распаковки
+    Remove-Item $zapretZipPath -Force
+} else {
+    # Если архив не существует, скачать его с указанного URL
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
+
+    # Распаковать архив на рабочий стол
+    Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
+
+    # Удалить архив после распаковки
+    Remove-Item $zapretZipPath -Force
 }
 
-# Функция для создания off.cmd
-Function Create-CleanupScript {
-    param (
-        [string]$cmdPath,
-        [string]$powershellScriptPath
-    )
-
-    $cmdContent = @"
-@echo off
-timeout /t 2 >nul
-powershell -ExecutionPolicy Bypass -NoProfile -File "$powershellScriptPath"
-exit
-"@
-    Set-Content -Path $cmdPath -Value $cmdContent -Encoding ASCII
-}
-
-# Функция для создания cleanup.ps1
-Function Create-CleanupPowerShellScript {
-    param (
-        [string]$powershellScriptPath,
-        [string]$deleteFilePath
-    )
-
-    $psContent = @"
-Start-Sleep -Seconds 2
-if (Test-Path "$deleteFilePath") {
-    Remove-Item -Path "$deleteFilePath" -Force -ErrorAction Stop
-}
-Remove-Item -Path `"$($MyInvocation.MyCommand.Definition)`" -Force -ErrorAction Stop
-"@
-    Set-Content -Path $powershellScriptPath -Value $psContent -Encoding UTF8
-}
-
-# Основной процесс
-try {
-    # Настройка путей
-    $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
-    $userProfilePath = [System.Environment]::GetFolderPath("UserProfile")
-    $downloadsPath = Join-Path -Path $userProfilePath -ChildPath "Downloads"
-    $desktopPath = Join-Path -Path $userProfilePath -ChildPath "Desktop"
-    $zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
-    $zapretFolderPath = Join-Path -Path $desktopPath -ChildPath "zapret"
-    $offCmdPath = Join-Path -Path $downloadsPath -ChildPath "off.cmd"
-    $cleanupPsPath = Join-Path -Path $downloadsPath -ChildPath "cleanup.ps1"
-
-    # Удаление старой папки и файла
-    if (Test-Path $zapretFolderPath) { Remove-Item -Path $zapretFolderPath -Recurse -Force }
-    Remove-File -filePath $zipPath
-
-    # Скачивание zip файла
-    Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
-
-    # Распаковка zip-файла
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $desktopPath)
-
-    # Создание cleanup.ps1 для удаления zapret.zip
-    Create-CleanupPowerShellScript -powershellScriptPath $cleanupPsPath -deleteFilePath $zipPath
-
-    # Создание off.cmd для запуска cleanup.ps1
-    Create-CleanupScript -cmdPath $offCmdPath -powershellScriptPath $cleanupPsPath
-
-    # Запуск off.cmd
-    Start-Process -FilePath $offCmdPath
-    Stop-Process -Id $PID
-} catch {
-    exit 1
+# Проверка на наличие папки zapret на рабочем столе и удаление её
+if (Test-Path $zapretFolderPath) {
+    Remove-Item $zapretFolderPath -Recurse -Force
 }
