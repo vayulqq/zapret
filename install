@@ -1,3 +1,14 @@
+if (Get-Service -Name "ZapretService" -ErrorAction SilentlyContinue) {
+    Write-Host "Служба ZapretService найдена. Выполняются команды..."
+    Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name "ZapretService" -Force -ErrorAction SilentlyContinue
+    Remove-Service -Name "ZapretService" -ErrorAction SilentlyContinue
+    Stop-Service -Name "windivert" -Force -ErrorAction SilentlyContinue
+    Remove-Service -Name "windivert" -ErrorAction SilentlyContinue
+} else {
+    Write-Host "Служба ZapretService не найдена."
+}
+
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
