@@ -78,8 +78,52 @@ try {
     # Распаковка
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
     
-    # Удаление файла zapret.zip после распаковки
-    Remove-ZipFile -filePath $zipPath
-} catch {
-    exit 1
+    # Функция для удаления файла с повторными попытками
+Function Remove-ZipFile {
+    param (
+        [string]$filePath
+    )
+
+    # Проверка существования файла
+    if (Test-Path -Path $filePath) {
+        $attempts = 5  # Количество попыток
+        $success = $false
+
+        for ($i = 1; $i -le $attempts; $i++) {
+            try {
+                # Проверка, не используется ли файл
+                $fileInUse = $false
+                try {
+                    $file = Get-Item -Path $filePath
+                    $file.OpenRead() | Out-Null
+                } catch {
+                    $fileInUse = $true
+                }
+
+                # Если файл не используется, удалить его
+                if (-not $fileInUse) {
+                    Remove-Item -Path $filePath -Force
+                    $success = $true
+                    break
+                }
+
+                # Если файл используется, подождать 1 секунду и попробовать снова
+                Start-Sleep -Seconds 1
+            } catch {
+                # Если ошибка, подождать и попробовать снова
+                Start-Sleep -Seconds 1
+            }
+        }
+
+        if (-not $success) {
+            Write-Host "Не удалось удалить файл после $attempts попыток."
+        }
+    } else {
+        Write-Host "Файл не существует: $filePath"
+    }
 }
+
+# Пример использования функции
+$zipPath = "C:\Users\AL\Downloads\zapret.zip"
+Remove-ZipFile -filePath $zipPath
+
