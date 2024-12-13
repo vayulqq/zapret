@@ -1,3 +1,33 @@
+# Функция для удаления папки, если она существует
+Function Remove-Folder {
+    param (
+        [string]$folderPath
+    )
+    if (Test-Path $folderPath) {
+        try {
+            Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Не удалось удалить папку: $folderPath" -ForegroundColor Red
+            exit 1
+        }
+    }
+}
+
+# Функция для удаления файла, если он существует
+Function Remove-File {
+    param (
+        [string]$filePath
+    )
+    if (Test-Path $filePath) {
+        try {
+            Remove-Item -Path $filePath -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Не удалось удалить файл: $filePath" -ForegroundColor Red
+            exit 1
+        }
+    }
+}
+
 # Функция для скачивания файла
 Function Download-File {
     param (
@@ -8,16 +38,19 @@ Function Download-File {
 
     $retryCount = 0
     $downloadSuccess = $false
-    while ($retryCount -lt $maxRetries -and !$downloadSuccess) {
+
+    while ($retryCount -lt $maxRetries -and -not $downloadSuccess) {
         try {
             Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
             $downloadSuccess = $true
         } catch {
             $retryCount++
+            Write-Host "Ошибка скачивания. Попытка $retryCount из $maxRetries..." -ForegroundColor Yellow
             if ($retryCount -ge $maxRetries) {
+                Write-Host "Не удалось скачать файл после $maxRetries попыток." -ForegroundColor Red
                 exit 1
             }
-            Start-Sleep -Seconds 2  # Задержка перед повторной попыткой
+            Start-Sleep -Seconds 2
         }
     }
 }
@@ -28,11 +61,12 @@ Function Unpack-Zip {
         [string]$filePath,
         [string]$extractTo
     )
-    
+
     try {
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::ExtractToDirectory($filePath, $extractTo)
     } catch {
+        Write-Host "Ошибка распаковки архива: $filePath" -ForegroundColor Red
         exit 1
     }
 }
@@ -42,32 +76,75 @@ Function Ensure-Folder {
     param (
         [string]$folderPath
     )
-    
+
     if (-not (Test-Path $folderPath)) {
-        New-Item -ItemType Directory -Path $folderPath | Out-Null
+        try {
+            New-Item -ItemType Directory -Path $folderPath | Out-Null
+        } catch {
+            Write-Host "Не удалось создать папку: $folderPath" -ForegroundColor Red
+            exit 1
+        }
+    }
+}
+
+# Функция для создания off.cmd
+Function Create-CleanupScript {
+    param (
+        [string]$filePath,
+        [string]$deleteFilePath
+    )
+
+    $cmdContent = @"
+@echo off
+timeout /t 5 >nul
+del /f /q "$deleteFilePath"
+del /f /q "%~f0"
+exit
+"@
+    try {
+        Set-Content -Path $filePath -Value $cmdContent -Encoding ASCII
+    } catch {
+        Write-Host "Ошибка создания файла: $filePath" -ForegroundColor Red
+        exit 1
     }
 }
 
 # Основной процесс
 try {
+    # Настройка путей
     $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
     $userProfilePath = [System.Environment]::GetFolderPath("UserProfile")
     $downloadsPath = Join-Path -Path $userProfilePath -ChildPath "Downloads"
     $desktopPath = Join-Path -Path $userProfilePath -ChildPath "Desktop"
-
-    # Локальный путь для сохранения ZIP-файла в папке Загрузки
     $zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
+    $zapretFolderPath = Join-Path -Path $desktopPath -ChildPath "zapret"
+    $offCmdPath = Join-Path -Path $downloadsPath -ChildPath "off.cmd"
+
+    Write-Host "Запуск скрипта..." -ForegroundColor Cyan
 
     # Убедимся, что папки существуют
     Ensure-Folder -folderPath $downloadsPath
     Ensure-Folder -folderPath $desktopPath
 
-    # Скачиваем файл
+    # Если папка zapret уже существует на рабочем столе, удаляем её
+    Remove-Folder -folderPath $zapretFolderPath
+
+    # Удаляем старый zip, если он существует
+    Remove-File -filePath $zipPath
+
+    # Скачиваем zip файл
     Download-File -url $url -savePath $zipPath
 
-    # Распаковка ZIP-файла на рабочий стол
+    # Распаковываем zip на рабочий стол
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
 
+    # Создаем off.cmd для очистки
+    Create-CleanupScript -filePath $offCmdPath -deleteFilePath $zipPath 
+# Запускаем off.cmd и завершаем PowerShell
+    Start-Process -FilePath $offCmdPath
+    Write-Host "Скрипт завершен. Запущен off.cmd." -ForegroundColor Green
+    Stop-Process -Id $PID
 } catch {
+    Write-Host "Произошла ошибка: $_" -ForegroundColor Red
     exit 1
 }
