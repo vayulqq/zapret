@@ -89,8 +89,37 @@ try {
 } catch {
     Log-Message "Общая ошибка: $_"
 }
-# Удаление файла zapret.zip после распаковки
-    Remove-ZipFile -filePath $zipPath
-} catch {
-    Log-Message "Общая ошибка: $_"
+# Функция для удаления файла
+Function Remove-ZipFile {
+    param (
+        [string]$filePath
+    )
+    
+    # Проверка существования файла
+    if (Test-Path -Path $filePath) {
+        try {
+            # Проверка, не используется ли файл другим процессом
+            $fileInUse = $false
+            try {
+                $file = Get-Item -Path $filePath
+                $file.OpenRead() | Out-Null
+            } catch {
+                $fileInUse = $true
+            }
+
+            if ($fileInUse) {
+                Log-Message "Файл $filePath занят другим процессом. Невозможно удалить."
+                exit 1
+            }
+
+            # Удаление файла
+            Remove-Item -Path $filePath -Force
+            Log-Message "Файл $filePath успешно удален."
+        } catch {
+            Log-Message "Ошибка при удалении файла $filePath: $_"
+            exit 1
+        }
+    } else {
+        Log-Message "Файл $filePath не существует, удаление не требуется."
+    }
 }
