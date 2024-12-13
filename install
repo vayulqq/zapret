@@ -7,12 +7,10 @@ Function Remove-File {
         try {
             Remove-Item -Path $filePath -Force -ErrorAction Stop
         } catch {
-            Write-Host "Ошибка удаления файла: $filePath. Повторная попытка..." -ForegroundColor Yellow
             Start-Sleep -Seconds 2
             try {
                 Remove-Item -Path $filePath -Force -ErrorAction Stop
             } catch {
-                Write-Host "Не удалось удалить файл: $filePath. Возможно, он заблокирован процессом." -ForegroundColor Red
                 exit 1
             }
         }
@@ -22,33 +20,21 @@ Function Remove-File {
 # Функция для создания off.cmd
 Function Create-CleanupScript {
     param (
-        [string]$filePath,
+        [string]$cmdPath,
         [string]$deleteFilePath
     )
 
     $cmdContent = @"
 @echo off
-echo Удаление файла $deleteFilePath...
-timeout /t 5 >nul
-:retry
+timeout /t 2 >nul
 if exist "$deleteFilePath" (
     del /f /q "$deleteFilePath" >nul 2>&1
-    if exist "$deleteFilePath" (
-        echo Файл $deleteFilePath не удален. Повторная попытка...
-        timeout /t 2 >nul
-        goto retry
-    )
 )
-echo Удаление временного файла...
+taskkill /f /im "powershell.exe" >nul 2>&1
 del /f /q "%~f0" >nul 2>&1
 exit
 "@
-    try {
-        Set-Content -Path $filePath -Value $cmdContent -Encoding ASCII
-    } catch {
-        Write-Host "Ошибка создания файла: $filePath" -ForegroundColor Red
-        exit 1
-    }
+    Set-Content -Path $cmdPath -Value $cmdContent -Encoding ASCII
 }
 
 # Основной процесс
@@ -62,43 +48,23 @@ try {
     $zapretFolderPath = Join-Path -Path $desktopPath -ChildPath "zapret"
     $offCmdPath = Join-Path -Path $downloadsPath -ChildPath "off.cmd"
 
-    Write-Host "Запуск скрипта..." -ForegroundColor Cyan
-
-    # Убедимся, что папки существуют
-    if (-not (Test-Path $downloadsPath)) { New-Item -ItemType Directory -Path $downloadsPath | Out-Null }
-    if (-not (Test-Path $desktopPath)) { New-Item -ItemType Directory -Path $desktopPath | Out-Null }
-
-    # Если папка zapret уже существует на рабочем столе, удаляем её
-    if (Test-Path $zapretFolderPath) {
-        try {
-            Remove-Item -Path $zapretFolderPath -Recurse -Force -ErrorAction Stop
-        } catch {
-            Write-Host "Не удалось удалить папку: $zapretFolderPath" -ForegroundColor Red
-            exit 1
-        }
-    }
-
-    # Удаляем старый zip, если он существует
+    # Удаление старой папки и файла
+    if (Test-Path $zapretFolderPath) { Remove-Item -Path $zapretFolderPath -Recurse -Force }
     Remove-File -filePath $zipPath
 
-    # Скачиваем zip файл
-    Write-Host "Скачиваем zip-файл..." -ForegroundColor Cyan
+    # Скачивание zip файла
     Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
 
-    # Распаковываем zip на рабочий стол
-    Write-Host "Распаковываем zip-файл на рабочий стол..." -ForegroundColor Cyan
+    # Распаковка zip-файла
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $desktopPath)
 
-    # Создаем off.cmd для очистки
-    Write-Host "Создаем off.cmd..." -ForegroundColor Cyan
-    Create-CleanupScript -filePath $offCmdPath -deleteFilePath $zipPath
+    # Создание CMD для очистки
+    Create-CleanupScript -cmdPath $offCmdPath -deleteFilePath $zipPath
 
-    # Запускаем off.cmd и завершаем PowerShell
+    # Запуск off.cmd
     Start-Process -FilePath $offCmdPath
-    Write-Host "Скрипт завершен. Запущен off.cmd." -ForegroundColor Green
     Stop-Process -Id $PID
 } catch {
-    Write-Host "Произошла ошибка: $_" -ForegroundColor Red
     exit 1
 }
