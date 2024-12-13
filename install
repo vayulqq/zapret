@@ -1,5 +1,91 @@
+# Функция для логирования
+Function Log-Message {
+    param (
+        [string]$message
+    )
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    "$timestamp - $message" | Out-File -FilePath $logFilePath -Append
+    Write-Host $message
+}
+
+# Функция для удаления файла
+Function Remove-ZipFile {
+    param (
+        [string]$filePath
+    )
+    
+    Log-Message "Пытаюсь удалить файл: $filePath"
+    
+    # Проверка существования файла
+    if (Test-Path -Path $filePath) {
+        try {
+            # Проверка, не используется ли файл другим процессом
+            $fileInUse = $false
+            try {
+                $file = Get-Item -Path $filePath
+                $file.OpenRead() | Out-Null
+            } catch {
+                $fileInUse = $true
+            }
+
+            if ($fileInUse) {
+                Log-Message "Файл $filePath занят другим процессом. Невозможно удалить."
+                exit 1
+            }
+
+            # Удаление файла
+            Remove-Item -Path $filePath -Force
+            Log-Message "Файл $filePath успешно удален."
+        } catch {
+            Log-Message "Ошибка при удалении файла $filePath: $_"
+            exit 1
+        }
+    } else {
+        Log-Message "Файл $filePath не существует, удаление не требуется."
+    }
+}
+
+# Функция для скачивания файла
+Function Download-File {
+    param (
+        [string]$url,
+        [string]$savePath
+    )
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
+        Log-Message "Файл успешно скачан: $savePath"
+    } catch {
+        Log-Message "Ошибка при скачивании файла: $_"
+        exit 1
+    }
+}
+
+# Функция для распаковки ZIP-файла
+Function Unpack-Zip {
+    param (
+        [string]$filePath,
+        [string]$extractTo
+    )
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($filePath, $extractTo)
+        Log-Message "Файлы успешно распакованы в папку: $extractTo"
+    } catch {
+        Log-Message "Ошибка при распаковке файла: $_"
+        exit 1
+    }
+}
+
 # Основной процесс
 try {
+    # Параметры
+    $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
+    $userProfilePath = [System.Environment]::GetFolderPath("UserProfile")
+    $downloadsPath = Join-Path -Path $userProfilePath -ChildPath "Downloads"
+    $desktopPath = Join-Path -Path $userProfilePath -ChildPath "Desktop"
+    $zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
+    $logFilePath = Join-Path -Path $desktopPath -ChildPath "download_log.txt"
+
     Log-Message "Начало работы скрипта."
 
     # Проверка существования папок
@@ -13,12 +99,11 @@ try {
     }
 
     # Скачивание файла
-    $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip" # Убедитесь, что URL правильный
     Download-File -url $url -savePath $zipPath
-
+    
     # Распаковка
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
-
+    
     # Печать пути перед удалением
     Log-Message "Попытка удалить файл: $zipPath"
     
