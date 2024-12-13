@@ -26,3 +26,6 @@ Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
 
 # Удаление архива после распаковки
 Remove-Item $zapretZipPath -Force
+
+# Закрытие PowerShell
+Exit
