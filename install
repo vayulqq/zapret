@@ -1,31 +1,22 @@
-# Путь до рабочего стола текущего пользователя
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 
-# Пути к файлам и папкам
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
 $zapretFolderPath = "$desktopPath\zapret"
 
-# URL для скачивания архива
 $zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
 
-# Проверка на наличие файла zapret.zip в папке "Загрузки" и удаление
 if (Test-Path $zapretZipPath) {
     Remove-Item $zapretZipPath -Force
 }
 
-# Проверка на наличие папки zapret на рабочем столе и удаление её до установки
 if (Test-Path $zapretFolderPath) {
     Remove-Item $zapretFolderPath -Recurse -Force
 }
 
-# Скачивание архива, если его нет
 Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
 
-# Распаковка архива на рабочий стол
 Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
 
-# Удаление архива после распаковки
 Remove-Item $zapretZipPath -Force
 
-# Закрытие PowerShell
 Exit
