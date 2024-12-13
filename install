@@ -89,3 +89,8 @@ try {
 } catch {
     Log-Message "Общая ошибка: $_"
 }
+# Удаление файла zapret.zip после распаковки
+    Remove-ZipFile -filePath $zipPath
+} catch {
+    Log-Message "Общая ошибка: $_"
+}
