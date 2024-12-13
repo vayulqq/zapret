@@ -1,20 +1,8 @@
-# Функция для логирования
-Function Log-Message {
-    param (
-        [string]$message
-    )
-    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-    "$timestamp - $message" | Out-File -FilePath $logFilePath -Append
-    Write-Host $message
-}
-
 # Функция для удаления файла
 Function Remove-ZipFile {
     param (
         [string]$filePath
     )
-    
-    Log-Message "Пытаюсь удалить файл: $filePath"
     
     # Проверка существования файла
     if (Test-Path -Path $filePath) {
