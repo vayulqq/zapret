@@ -97,7 +97,12 @@ Function Create-CleanupScript {
     $cmdContent = @"
 @echo off
 timeout /t 5 >nul
-del /f /q "$deleteFilePath"
+:retry
+del /f /q "$deleteFilePath" 2>nul
+if exist "$deleteFilePath" (
+    timeout /t 1 >nul
+    goto retry
+)
 del /f /q "%~f0"
 exit
 "@
