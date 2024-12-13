@@ -7,8 +7,14 @@ Function Remove-Folder {
         try {
             Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
         } catch {
-            Write-Host "Не удалось удалить папку: $folderPath" -ForegroundColor Red
-            exit 1
+            Write-Host "Папка может быть заблокирована. Попробуем удалить её повторно..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+            try {
+                Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
+            } catch {
+                Write-Host "Не удалось удалить папку: $folderPath. Возможно, она заблокирована процессом." -ForegroundColor Red
+                exit 1
+            }
         }
     }
 }
@@ -22,8 +28,14 @@ Function Remove-File {
         try {
             Remove-Item -Path $filePath -Force -ErrorAction Stop
         } catch {
-            Write-Host "Не удалось удалить файл: $filePath" -ForegroundColor Red
-            exit 1
+            Write-Host "Файл может быть заблокирован. Попробуем удалить его повторно..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+            try {
+                Remove-Item -Path $filePath -Force -ErrorAction Stop
+            } catch {
+                Write-Host "Не удалось удалить файл: $filePath. Возможно, он заблокирован процессом." -ForegroundColor Red
+                exit 1
+            }
         }
     }
 }
@@ -98,12 +110,13 @@ Function Create-CleanupScript {
 @echo off
 timeout /t 5 >nul
 :retry
-del /f /q "$deleteFilePath" 2>nul
+del /f /q "$deleteFilePath" >nul 2>&1
 if exist "$deleteFilePath" (
-    timeout /t 1 >nul
+    echo Файл заперт, ожидаем освобождения...
+    timeout /t 2 >nul
     goto retry
 )
-del /f /q "%~f0"
+del /f /q "%~f0" >nul 2>&1
 exit
 "@
     try {
@@ -144,8 +157,9 @@ try {
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
 
     # Создаем off.cmd для очистки
-    Create-CleanupScript -filePath $offCmdPath -deleteFilePath $zipPath 
-# Запускаем off.cmd и завершаем PowerShell
+    Create-CleanupScript -filePath $offCmdPath -deleteFilePath $zipPath
+
+    # Запускаем off.cmd и завершаем PowerShell
     Start-Process -FilePath $offCmdPath
     Write-Host "Скрипт завершен. Запущен off.cmd." -ForegroundColor Green
     Stop-Process -Id $PID
