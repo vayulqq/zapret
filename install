@@ -1,24 +1,3 @@
-# Функция для удаления папки, если она существует
-Function Remove-Folder {
-    param (
-        [string]$folderPath
-    )
-    if (Test-Path $folderPath) {
-        try {
-            Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
-        } catch {
-            Write-Host "Папка может быть заблокирована. Попробуем удалить её повторно..." -ForegroundColor Yellow
-            Start-Sleep -Seconds 2
-            try {
-                Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
-            } catch {
-                Write-Host "Не удалось удалить папку: $folderPath. Возможно, она заблокирована процессом." -ForegroundColor Red
-                exit 1
-            }
-        }
-    }
-}
-
 # Функция для удаления файла, если он существует
 Function Remove-File {
     param (
@@ -28,7 +7,7 @@ Function Remove-File {
         try {
             Remove-Item -Path $filePath -Force -ErrorAction Stop
         } catch {
-            Write-Host "Файл может быть заблокирован. Попробуем удалить его повторно..." -ForegroundColor Yellow
+            Write-Host "Ошибка удаления файла: $filePath. Повторная попытка..." -ForegroundColor Yellow
             Start-Sleep -Seconds 2
             try {
                 Remove-Item -Path $filePath -Force -ErrorAction Stop
@@ -36,65 +15,6 @@ Function Remove-File {
                 Write-Host "Не удалось удалить файл: $filePath. Возможно, он заблокирован процессом." -ForegroundColor Red
                 exit 1
             }
-        }
-    }
-}
-
-# Функция для скачивания файла
-Function Download-File {
-    param (
-        [string]$url,
-        [string]$savePath,
-        [int]$maxRetries = 3
-    )
-
-    $retryCount = 0
-    $downloadSuccess = $false
-
-    while ($retryCount -lt $maxRetries -and -not $downloadSuccess) {
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
-            $downloadSuccess = $true
-        } catch {
-            $retryCount++
-            Write-Host "Ошибка скачивания. Попытка $retryCount из $maxRetries..." -ForegroundColor Yellow
-            if ($retryCount -ge $maxRetries) {
-                Write-Host "Не удалось скачать файл после $maxRetries попыток." -ForegroundColor Red
-                exit 1
-            }
-            Start-Sleep -Seconds 2
-        }
-    }
-}
-
-# Функция для распаковки ZIP-файла
-Function Unpack-Zip {
-    param (
-        [string]$filePath,
-        [string]$extractTo
-    )
-
-    try {
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($filePath, $extractTo)
-    } catch {
-        Write-Host "Ошибка распаковки архива: $filePath" -ForegroundColor Red
-        exit 1
-    }
-}
-
-# Функция для проверки существования папки
-Function Ensure-Folder {
-    param (
-        [string]$folderPath
-    )
-
-    if (-not (Test-Path $folderPath)) {
-        try {
-            New-Item -ItemType Directory -Path $folderPath | Out-Null
-        } catch {
-            Write-Host "Не удалось создать папку: $folderPath" -ForegroundColor Red
-            exit 1
         }
     }
 }
@@ -108,14 +28,18 @@ Function Create-CleanupScript {
 
     $cmdContent = @"
 @echo off
+echo Удаление файла $deleteFilePath...
 timeout /t 5 >nul
 :retry
-del /f /q "$deleteFilePath" >nul 2>&1
 if exist "$deleteFilePath" (
-    echo Файл заперт, ожидаем освобождения...
-    timeout /t 2 >nul
-    goto retry
+    del /f /q "$deleteFilePath" >nul 2>&1
+    if exist "$deleteFilePath" (
+        echo Файл $deleteFilePath не удален. Повторная попытка...
+        timeout /t 2 >nul
+        goto retry
+    )
 )
+echo Удаление временного файла...
 del /f /q "%~f0" >nul 2>&1
 exit
 "@
@@ -141,22 +65,33 @@ try {
     Write-Host "Запуск скрипта..." -ForegroundColor Cyan
 
     # Убедимся, что папки существуют
-    Ensure-Folder -folderPath $downloadsPath
-    Ensure-Folder -folderPath $desktopPath
+    if (-not (Test-Path $downloadsPath)) { New-Item -ItemType Directory -Path $downloadsPath | Out-Null }
+    if (-not (Test-Path $desktopPath)) { New-Item -ItemType Directory -Path $desktopPath | Out-Null }
 
     # Если папка zapret уже существует на рабочем столе, удаляем её
-    Remove-Folder -folderPath $zapretFolderPath
+    if (Test-Path $zapretFolderPath) {
+        try {
+            Remove-Item -Path $zapretFolderPath -Recurse -Force -ErrorAction Stop
+        } catch {
+            Write-Host "Не удалось удалить папку: $zapretFolderPath" -ForegroundColor Red
+            exit 1
+        }
+    }
 
     # Удаляем старый zip, если он существует
     Remove-File -filePath $zipPath
 
     # Скачиваем zip файл
-    Download-File -url $url -savePath $zipPath
+    Write-Host "Скачиваем zip-файл..." -ForegroundColor Cyan
+    Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
 
     # Распаковываем zip на рабочий стол
-    Unpack-Zip -filePath $zipPath -extractTo $desktopPath
+    Write-Host "Распаковываем zip-файл на рабочий стол..." -ForegroundColor Cyan
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $desktopPath)
 
     # Создаем off.cmd для очистки
+    Write-Host "Создаем off.cmd..." -ForegroundColor Cyan
     Create-CleanupScript -filePath $offCmdPath -deleteFilePath $zipPath
 
     # Запускаем off.cmd и завершаем PowerShell
