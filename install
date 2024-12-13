@@ -96,8 +96,11 @@ try {
     # Распаковка ZIP-файла на рабочий стол
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
 
-    # Удаление исходного ZIP-файла после успешной распаковки
-    Remove-ZipFile -filePath $zipPath
+    # Используем PowerShell Job для удаления файла после завершения всех операций
+    Start-Job -ScriptBlock {
+        param($fileToDelete)
+        Remove-ZipFile -filePath $fileToDelete
+    } -ArgumentList $zipPath
 
 } catch {
     exit 1
