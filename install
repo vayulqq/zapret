@@ -13,7 +13,7 @@ if (Test-Path $zapretZipPath) {
     Remove-Item $zapretZipPath -Force
 }
 
-# Проверка на наличие папки zapret на рабочем столе и удаление
+# Проверка на наличие папки zapret на рабочем столе и удаление её до установки
 if (Test-Path $zapretFolderPath) {
     Remove-Item $zapretFolderPath -Recurse -Force
 }
