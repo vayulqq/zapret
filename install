@@ -1,0 +1,91 @@
+# Получаем пути к папке загрузок и рабочему столу для текущего пользователя
+$userProfilePath = [System.Environment]::GetFolderPath("UserProfile")
+$downloadsPath = Join-Path -Path $userProfilePath -ChildPath "Downloads"
+$desktopPath = Join-Path -Path $userProfilePath -ChildPath "Desktop"
+
+# Локальный путь для сохранения ZIP-файла в папке Загрузки
+$zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
+$logFilePath = Join-Path -Path $desktopPath -ChildPath "download_log.txt"
+
+# Функция для логирования
+Function Log-Message {
+    param ([string]$message)
+
+    # Проверка на null
+    if ($logFilePath -eq $null) {
+        Write-Host "Ошибка: Путь к файлу лога не установлен!"
+        exit 1
+    }
+
+    # Проверка на существование папки для лога
+    if (-Not (Test-Path $desktopPath)) {
+        Write-Host "Ошибка: Папка рабочего стола не существует!"
+        exit 1
+    }
+
+    # Добавляем метку времени и записываем сообщение
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    try {
+        "$timestamp - $message" | Out-File -FilePath $logFilePath -Append -Force
+    } catch {
+        Write-Host "Ошибка при записи в файл лога: $_"
+        exit 1
+    }
+
+    Write-Host $message  # Также выводим в консоль
+}
+
+# Функция для скачивания файла
+Function Download-File {
+    param ([string]$url, [string]$savePath)
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
+        Log-Message "Файл успешно скачан: $savePath"
+    } catch {
+        Log-Message "Ошибка при скачивании файла: $_"
+        exit 1
+    }
+}
+
+# Функция для распаковки ZIP-файла
+Function Unpack-Zip {
+    param ([string]$filePath, [string]$extractTo)
+
+    # Проверка на существование модуля для работы с ZIP
+    if (-not (Get-Command "Expand-Archive" -ErrorAction SilentlyContinue)) {
+        Write-Host "Ошибка: Команда Expand-Archive не доступна в вашей версии PowerShell."
+        exit 1
+    }
+
+    try {
+        Expand-Archive -Path $filePath -DestinationPath $extractTo -Force
+        Log-Message "Файлы успешно распакованы в папку: $extractTo"
+    } catch {
+        Log-Message "Ошибка при распаковке файла: $_"
+        exit 1
+    }
+}
+
+# Основной процесс
+try {
+    Log-Message "Начало работы скрипта."
+
+    # Проверка существования папок
+    If (-Not (Test-Path $downloadsPath)) {
+        Log-Message "Папка загрузок не существует. Создаю её..."
+        New-Item -ItemType Directory -Path $downloadsPath -Force | Out-Null
+    }
+    If (-Not (Test-Path $desktopPath)) {
+        Log-Message "Папка рабочего стола не существует. Создаю её..."
+        New-Item -ItemType Directory -Path $desktopPath -Force | Out-Null
+    }
+
+    # Скачивание файла
+    $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip" # Убедитесь, что URL правильный
+    Download-File -url $url -savePath $zipPath
+    
+    # Распаковка
+    Unpack-Zip -filePath $zipPath -extractTo $desktopPath
+} catch {
+    Log-Message "Общая ошибка: $_"
+}
