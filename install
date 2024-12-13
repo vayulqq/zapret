@@ -21,20 +21,33 @@ Function Remove-File {
 Function Create-CleanupScript {
     param (
         [string]$cmdPath,
-        [string]$deleteFilePath
+        [string]$powershellScriptPath
     )
 
     $cmdContent = @"
 @echo off
 timeout /t 2 >nul
-if exist "$deleteFilePath" (
-    del /f /q "$deleteFilePath" >nul 2>&1
-)
-taskkill /f /im "powershell.exe" >nul 2>&1
-del /f /q "%~f0" >nul 2>&1
+powershell -ExecutionPolicy Bypass -NoProfile -File "$powershellScriptPath"
 exit
 "@
     Set-Content -Path $cmdPath -Value $cmdContent -Encoding ASCII
+}
+
+# Функция для создания cleanup.ps1
+Function Create-CleanupPowerShellScript {
+    param (
+        [string]$powershellScriptPath,
+        [string]$deleteFilePath
+    )
+
+    $psContent = @"
+Start-Sleep -Seconds 2
+if (Test-Path "$deleteFilePath") {
+    Remove-Item -Path "$deleteFilePath" -Force -ErrorAction Stop
+}
+Remove-Item -Path `"$($MyInvocation.MyCommand.Definition)`" -Force -ErrorAction Stop
+"@
+    Set-Content -Path $powershellScriptPath -Value $psContent -Encoding UTF8
 }
 
 # Основной процесс
@@ -47,6 +60,7 @@ try {
     $zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
     $zapretFolderPath = Join-Path -Path $desktopPath -ChildPath "zapret"
     $offCmdPath = Join-Path -Path $downloadsPath -ChildPath "off.cmd"
+    $cleanupPsPath = Join-Path -Path $downloadsPath -ChildPath "cleanup.ps1"
 
     # Удаление старой папки и файла
     if (Test-Path $zapretFolderPath) { Remove-Item -Path $zapretFolderPath -Recurse -Force }
@@ -59,8 +73,11 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $desktopPath)
 
-    # Создание CMD для очистки
-    Create-CleanupScript -cmdPath $offCmdPath -deleteFilePath $zipPath
+    # Создание cleanup.ps1 для удаления zapret.zip
+    Create-CleanupPowerShellScript -powershellScriptPath $cleanupPsPath -deleteFilePath $zipPath
+
+    # Создание off.cmd для запуска cleanup.ps1
+    Create-CleanupScript -cmdPath $offCmdPath -powershellScriptPath $cleanupPsPath
 
     # Запуск off.cmd
     Start-Process -FilePath $offCmdPath
