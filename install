@@ -1,31 +1,3 @@
-# Функция для удаления файла
-Function Remove-ZipFile {
-    param (
-        [string]$filePath
-    )
-
-    if (Test-Path -Path $filePath) {
-        try {
-            $fileInUse = $false
-            try {
-                $file = Get-Item -Path $filePath
-                $file.OpenRead() | Out-Null
-            } catch {
-                $fileInUse = $true
-            }
-
-            if (-not $fileInUse) {
-                Remove-Item -Path $filePath -Force
-            } else {
-                Start-Sleep -Seconds 1
-                Remove-ZipFile -filePath $filePath  # Повторная попытка
-            }
-        } catch {
-            exit 1
-        }
-    }
-}
-
 # Функция для скачивания файла
 Function Download-File {
     param (
@@ -95,12 +67,6 @@ try {
 
     # Распаковка ZIP-файла на рабочий стол
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
-
-    # Используем PowerShell Job для удаления файла после завершения всех операций
-    Start-Job -ScriptBlock {
-        param($fileToDelete)
-        Remove-ZipFile -filePath $fileToDelete
-    } -ArgumentList $zipPath
 
 } catch {
     exit 1
