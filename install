@@ -78,7 +78,7 @@ try {
     # Распаковка
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
     
-    # Функция для удаления файла с повторными попытками
+    # Функция для удаления файла с повторной попыткой
 Function Remove-ZipFile {
     param (
         [string]$filePath
@@ -117,6 +117,8 @@ Function Remove-ZipFile {
 
         if (-not $success) {
             Write-Host "Не удалось удалить файл после $attempts попыток."
+        } else {
+            Write-Host "Файл успешно удален."
         }
     } else {
         Write-Host "Файл не существует: $filePath"
@@ -126,4 +128,3 @@ Function Remove-ZipFile {
 # Пример использования функции
 $zipPath = "C:\Users\AL\Downloads\zapret.zip"
 Remove-ZipFile -filePath $zipPath
-
