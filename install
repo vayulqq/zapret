@@ -3,11 +3,9 @@ Function Remove-ZipFile {
     param (
         [string]$filePath
     )
-    
-    # Проверка существования файла
+
     if (Test-Path -Path $filePath) {
         try {
-            # Проверка, не используется ли файл другим процессом
             $fileInUse = $false
             try {
                 $file = Get-Item -Path $filePath
@@ -16,12 +14,12 @@ Function Remove-ZipFile {
                 $fileInUse = $true
             }
 
-            if ($fileInUse) {
-                exit 1
+            if (-not $fileInUse) {
+                Remove-Item -Path $filePath -Force
+            } else {
+                Start-Sleep -Seconds 1
+                Remove-ZipFile -filePath $filePath  # Повторная попытка
             }
-
-            # Удаление файла
-            Remove-Item -Path $filePath -Force
         } catch {
             exit 1
         }
@@ -32,12 +30,23 @@ Function Remove-ZipFile {
 Function Download-File {
     param (
         [string]$url,
-        [string]$savePath
+        [string]$savePath,
+        [int]$maxRetries = 3
     )
-    try {
-        Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
-    } catch {
-        exit 1
+
+    $retryCount = 0
+    $downloadSuccess = $false
+    while ($retryCount -lt $maxRetries -and !$downloadSuccess) {
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $savePath -ErrorAction Stop
+            $downloadSuccess = $true
+        } catch {
+            $retryCount++
+            if ($retryCount -ge $maxRetries) {
+                exit 1
+            }
+            Start-Sleep -Seconds 2  # Задержка перед повторной попыткой
+        }
     }
 }
 
@@ -47,6 +56,7 @@ Function Unpack-Zip {
         [string]$filePath,
         [string]$extractTo
     )
+    
     try {
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::ExtractToDirectory($filePath, $extractTo)
@@ -55,76 +65,40 @@ Function Unpack-Zip {
     }
 }
 
+# Функция для проверки существования папки
+Function Ensure-Folder {
+    param (
+        [string]$folderPath
+    )
+    
+    if (-not (Test-Path $folderPath)) {
+        New-Item -ItemType Directory -Path $folderPath | Out-Null
+    }
+}
+
 # Основной процесс
 try {
-    # Параметры
     $url = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
     $userProfilePath = [System.Environment]::GetFolderPath("UserProfile")
     $downloadsPath = Join-Path -Path $userProfilePath -ChildPath "Downloads"
     $desktopPath = Join-Path -Path $userProfilePath -ChildPath "Desktop"
+
+    # Локальный путь для сохранения ZIP-файла в папке Загрузки
     $zipPath = Join-Path -Path $downloadsPath -ChildPath "zapret.zip"
 
-    # Проверка существования папок
-    If (-Not (Test-Path $downloadsPath)) {
-        New-Item -ItemType Directory -Path $downloadsPath -Force | Out-Null
-    }
-    If (-Not (Test-Path $desktopPath)) {
-        New-Item -ItemType Directory -Path $desktopPath -Force | Out-Null
-    }
+    # Убедимся, что папки существуют
+    Ensure-Folder -folderPath $downloadsPath
+    Ensure-Folder -folderPath $desktopPath
 
-    # Скачивание файла
+    # Скачиваем файл
     Download-File -url $url -savePath $zipPath
-    
-    # Распаковка
+
+    # Распаковка ZIP-файла на рабочий стол
     Unpack-Zip -filePath $zipPath -extractTo $desktopPath
-    
-    # Функция для удаления файла с повторной попыткой
-Function Remove-ZipFile {
-    param (
-        [string]$filePath
-    )
 
-    # Проверка существования файла
-    if (Test-Path -Path $filePath) {
-        $attempts = 5  # Количество попыток
-        $success = $false
+    # Удаление исходного ZIP-файла после успешной распаковки
+    Remove-ZipFile -filePath $zipPath
 
-        for ($i = 1; $i -le $attempts; $i++) {
-            try {
-                # Проверка, не используется ли файл
-                $fileInUse = $false
-                try {
-                    $file = Get-Item -Path $filePath
-                    $file.OpenRead() | Out-Null
-                } catch {
-                    $fileInUse = $true
-                }
-
-                # Если файл не используется, удалить его
-                if (-not $fileInUse) {
-                    Remove-Item -Path $filePath -Force
-                    $success = $true
-                    break
-                }
-
-                # Если файл используется, подождать 1 секунду и попробовать снова
-                Start-Sleep -Seconds 1
-            } catch {
-                # Если ошибка, подождать и попробовать снова
-                Start-Sleep -Seconds 1
-            }
-        }
-
-        if (-not $success) {
-            Write-Host "Не удалось удалить файл после $attempts попыток."
-        } else {
-            Write-Host "Файл успешно удален."
-        }
-    } else {
-        Write-Host "Файл не существует: $filePath"
-    }
+} catch {
+    exit 1
 }
-
-# Пример использования функции
-$zipPath = "C:\Users\AL\Downloads\zapret.zip"
-Remove-ZipFile -filePath $zipPath
