@@ -1,6 +1,18 @@
-Stop-Process -Name "winws" -Force 2>$null 3>$null
-Stop-Service -Name "windivert" 2>$null 3>$null
-sc.exe delete windivert >$null 2>$null
+try {
+    Stop-Process -Name "winws" -Force -ErrorAction Stop
+} catch {
+    Write-Host "Ошибка при завершении процесса winws: $_" -ForegroundColor Red
+}
+try {
+    Stop-Service -Name "windivert" -Force -ErrorAction Stop
+} catch {
+    Write-Host "Ошибка при остановке службы windivert: $_" -ForegroundColor Red
+}
+try {
+    & sc.exe delete windivert 2>$null
+} catch {
+    Write-Host "Ошибка при удалении службы windivert: $_" -ForegroundColor Red
+}
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
 $zapretFolderPath = "$desktopPath\zapret"
