@@ -19,4 +19,4 @@ Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
 
 Remove-Item $zapretZipPath -Force
 
-Exit
+Stop-Process -Id $PID -Force
