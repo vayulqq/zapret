@@ -5,6 +5,23 @@ if (Get-Process -Name "winws" -ErrorAction SilentlyContinue) {
     }
 } else {
 }
+if (Get-Service -Name "ZapretService" -ErrorAction SilentlyContinue) {
+    try {
+        Stop-Service -Name "ZapretService" -Force -ErrorAction SilentlyContinue 2>$null
+    } catch {
+    }
+} else {
+}
+
+if (Get-Service -Name "ZapretService" -ErrorAction SilentlyContinue) {
+    try {
+        # Удаление службы ZapretService с помощью sc.exe
+        & sc.exe delete ZapretService 2>$null
+    } catch {
+        # Обработка ошибок при удалении службы
+    }
+} else {
+}
 if (Get-Service -Name "windivert" -ErrorAction SilentlyContinue) {
     try {
         Stop-Service -Name "windivert" -Force -ErrorAction SilentlyContinue 2>$null
