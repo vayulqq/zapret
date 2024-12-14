@@ -1,34 +1,23 @@
-# Проверка и завершение процесса winws.exe с скрытием ошибок
 if (Get-Process -Name "winws" -ErrorAction SilentlyContinue) {
     try {
         Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue 2>$null
     } catch {
-        # Ошибка не будет отображаться
     }
 } else {
-    # Процесс не найден, пропуск
 }
-
-# Проверка и остановка службы Windivert с скрытием ошибок
 if (Get-Service -Name "windivert" -ErrorAction SilentlyContinue) {
     try {
         Stop-Service -Name "windivert" -Force -ErrorAction SilentlyContinue 2>$null
     } catch {
-        # Ошибка не будет отображаться
     }
 } else {
-    # Служба не найдена, пропуск
 }
-
-# Удаление службы Windivert с скрытием ошибок
 if (Get-Service -Name "windivert" -ErrorAction SilentlyContinue) {
     try {
         & sc.exe delete windivert 2>$null
     } catch {
-        # Ошибка не будет отображаться
     }
 } else {
-    # Служба не найдена, пропуск
 }
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
