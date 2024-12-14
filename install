@@ -1,6 +1,10 @@
-Stop-Process -Name "winws" -Force 2>$null
-Stop-Service -Name "windivert" -Force 2>$null
-sc.exe delete windivert 2>$null
+& taskkill /f /im winws.exe 2>$null
+if (& sc query windivert 2>$null | Select-String "SERVICE_NAME") {
+    & sc stop windivert 2>$null
+    & sc delete windivert 2>$null
+} else {
+    Write-Host "Служба Windivert не найдена. Пропуск..."
+}
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
 $zapretFolderPath = "$desktopPath\zapret"
