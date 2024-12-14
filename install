@@ -1,47 +1,3 @@
-if (Get-Process -Name "winws" -ErrorAction SilentlyContinue) {
-    try {
-        Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue 2>$null
-    } catch {
-    }
-} else {
-}
-if (Get-Service -Name "ZapretService" -ErrorAction SilentlyContinue) {
-    try {
-        Stop-Service -Name "ZapretService" -Force -ErrorAction SilentlyContinue 2>$null
-    } catch {
-    }
-} else {
-}
-
-if (Get-Service -Name "ZapretService" -ErrorAction SilentlyContinue) {
-    try {
-        # Удаление службы ZapretService с помощью sc.exe
-        & sc.exe delete ZapretService 2>$null
-    } catch {
-        # Обработка ошибок при удалении службы
-    }
-} else {
-}
-if (Get-Service -Name "windivert" -ErrorAction SilentlyContinue) {
-    try {
-        Stop-Service -Name "windivert" -Force -ErrorAction SilentlyContinue 2>$null
-    } catch {
-    }
-} else {
-}
-if (Get-Service -Name "windivert" -ErrorAction SilentlyContinue) {
-    try {
-        & sc.exe delete windivert 2>$null
-    } catch {
-    }
-} else {
-}
-# Определение путей
-$desktopPath = [System.Environment]::GetFolderPath('Desktop')
-$zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
-$zapretFolderPath = "$desktopPath\zapret"
-$zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
-
 # Функция для вывода цветных сообщений
 function Write-ColorMessage {
     param (
@@ -50,6 +6,53 @@ function Write-ColorMessage {
     )
     Write-Host $message -ForegroundColor $color
 }
+
+# Функция для остановки процессов/служб и их удаления
+function Stop-And-RemoveService {
+    param (
+        [string]$serviceName,
+        [string]$processName = $null
+    )
+
+    # Останавливаем процесс, если он существует
+    if ($processName) {
+        if (Get-Process -Name $processName -ErrorAction SilentlyContinue) {
+            Write-ColorMessage "Остановка процесса $processName..." -ForegroundColor Red
+            try {
+                Stop-Process -Name $processName -Force -ErrorAction SilentlyContinue 2>$null
+            } catch {
+                Write-ColorMessage "Ошибка при остановке процесса $processName!" -ForegroundColor Yellow
+            }
+        }
+    }
+
+    # Останавливаем и удаляем службу, если она существует
+    if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+        Write-ColorMessage "Остановка службы $serviceName..." -ForegroundColor Red
+        try {
+            Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue 2>$null
+        } catch {
+            Write-ColorMessage "Ошибка при остановке службы $serviceName!" -ForegroundColor Yellow
+        }
+
+        Write-ColorMessage "Удаление службы $serviceName..." -ForegroundColor Red
+        try {
+            & sc.exe delete $serviceName 2>$null
+        } catch {
+            Write-ColorMessage "Ошибка при удалении службы $serviceName!" -ForegroundColor Yellow
+        }
+    }
+}
+
+# Определение путей
+$desktopPath = [System.Environment]::GetFolderPath('Desktop')
+$zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
+$zapretFolderPath = "$desktopPath\zapret"
+$zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
+
+# Остановка и удаление процессов и служб
+Stop-And-RemoveService -serviceName "ZapretService" -processName "winws"
+Stop-And-RemoveService -serviceName "windivert"
 
 # Проверка и удаление предыдущего архива (если существует)
 if (Test-Path $zapretZipPath) {
