@@ -1,4 +1,3 @@
-# Функция для вывода цветных сообщений
 function Write-ColorMessage {
     param (
         [string]$message,
@@ -6,15 +5,11 @@ function Write-ColorMessage {
     )
     Write-Host $message -ForegroundColor $color
 }
-
-# Функция для остановки процессов/служб и их удаления
 function Stop-And-RemoveService {
     param (
         [string]$serviceName,
         [string]$processName = $null
     )
-
-    # Останавливаем процесс, если он существует
     if ($processName) {
         if (Get-Process -Name $processName -ErrorAction SilentlyContinue) {
             Write-ColorMessage "Остановка процесса $processName..." -ForegroundColor Red
@@ -25,8 +20,6 @@ function Stop-And-RemoveService {
             }
         }
     }
-
-    # Останавливаем и удаляем службу, если она существует
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
         Write-ColorMessage "Остановка службы $serviceName..." -ForegroundColor Red
         try {
@@ -43,30 +36,20 @@ function Stop-And-RemoveService {
         }
     }
 }
-
-# Определение путей
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
 $zapretFolderPath = "$desktopPath\zapret"
 $zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
-
-# Остановка и удаление процессов и служб
 Stop-And-RemoveService -serviceName "ZapretService" -processName "winws"
 Stop-And-RemoveService -serviceName "windivert"
-
-# Проверка и удаление предыдущего архива (если существует)
 if (Test-Path $zapretZipPath) {
     Write-ColorMessage "Удаление старого ZIP архива..." -ForegroundColor Red
     Remove-Item $zapretZipPath -Force
 }
-
-# Проверка и удаление предыдущей папки (если существует)
 if (Test-Path $zapretFolderPath) {
     Write-ColorMessage "Удаление старой папки..." -ForegroundColor Red
     Remove-Item $zapretFolderPath -Recurse -Force
 }
-
-# Скачивание ZIP файла
 Write-ColorMessage "Скачивание ZIP файла..." -ForegroundColor Cyan
 try {
     Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
@@ -75,8 +58,6 @@ try {
     Write-ColorMessage "Ошибка при скачивании файла!" -ForegroundColor Yellow
     exit 1
 }
-
-# Распаковка архива
 Write-ColorMessage "Распаковка архива..." -ForegroundColor Cyan
 try {
     Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
@@ -85,15 +66,9 @@ try {
     Write-ColorMessage "Ошибка при распаковке архива!" -ForegroundColor Yellow
     exit 1
 }
-
-# Удаление ZIP файла после распаковки
 Write-ColorMessage "Удаление ZIP файла..." -ForegroundColor Red
 Remove-Item $zapretZipPath -Force
-
-# Открытие README
 Write-ColorMessage "Открытие README..." -ForegroundColor Cyan
 start https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt
-
-# Завершение текущего процесса
 Write-ColorMessage "Завершение скрипта..." -ForegroundColor Magenta
 Stop-Process -Id $PID -Force
