@@ -32,4 +32,5 @@ if (Test-Path $zapretFolderPath) {
 Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
 Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
 Remove-Item $zapretZipPath -Force
+https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt
 Stop-Process -Id $PID -Force
