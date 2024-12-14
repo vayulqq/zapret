@@ -1,27 +1,14 @@
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
-$installScriptPath = "$env:USERPROFILE\Downloads\install.ps1"
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
 $zapretFolderPath = "$desktopPath\zapret"
-
 $zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
-
 if (Test-Path $zapretZipPath) {
     Remove-Item $zapretZipPath -Force
 }
-
 if (Test-Path $zapretFolderPath) {
     Remove-Item $zapretFolderPath -Recurse -Force
 }
-
 Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
-
 Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
-
 Remove-Item $zapretZipPath -Force
-
-if (Test-Path $installScriptPath) {
-    Write-Host "Удаление install.ps1 из папки Загрузки..."
-    Remove-Item $installScriptPath -Force
-}
-
 Stop-Process -Id $PID -Force
