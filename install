@@ -81,4 +81,4 @@ Write-ColorMessage "Открытие README..." -ForegroundColor Cyan
 start https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt
 
 Write-ColorMessage "Завершение скрипта..." -ForegroundColor Magenta
-Stop-Process -Id $PID -Force
+Exit
