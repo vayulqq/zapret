@@ -1,6 +1,6 @@
-Stop-Process -Name "winws" -Force
-Stop-Service -Name "windivert" -Force
-sc.exe delete windivert
+Stop-Process -Name "winws" -Force 2>$null
+Stop-Service -Name "windivert" -Force 2>$null
+sc.exe delete windivert 2>$null
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
 $zapretFolderPath = "$desktopPath\zapret"
