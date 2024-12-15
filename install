@@ -1,9 +1,12 @@
 function Write-ColorMessage {
     param (
         [string]$message,
-        [string]$color = "White"
+        [ConsoleColor]$color = [ConsoleColor]::Green
     )
-    Write-Host $message -ForegroundColor $color
+    $currentColor = $Host.UI.RawUI.ForegroundColor
+    $Host.UI.RawUI.ForegroundColor = $color
+    Write-Host $message
+    $Host.UI.RawUI.ForegroundColor = $currentColor
 }
 
 function Stop-And-RemoveService {
@@ -13,72 +16,101 @@ function Stop-And-RemoveService {
     )
 
     if ($processName -and (Get-Process -Name $processName -ErrorAction SilentlyContinue)) {
-        Write-ColorMessage "Остановка процесса $processName..." -ForegroundColor Red
+        Write-ColorMessage "Остановка процесса $processName..." -color Green
         try {
             Stop-Process -Name $processName -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-ColorMessage "Ошибка при остановке процесса $processName!" -ForegroundColor Yellow
+            Write-ColorMessage "Ошибка при остановке процесса $processName!" -color Green
         }
     }
 
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
-        Write-ColorMessage "Остановка службы $serviceName..." -ForegroundColor Red
+        Write-ColorMessage "Остановка службы $serviceName..." -color Green
         try {
             Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-ColorMessage "Ошибка при остановке службы $serviceName!" -ForegroundColor Yellow
+            Write-ColorMessage "Ошибка при остановке службы $serviceName!" -color Green
         }
 
-        Write-ColorMessage "Удаление службы $serviceName..." -ForegroundColor Red
+        Write-ColorMessage "Удаление службы $serviceName..." -color Green
         try {
             & sc.exe delete $serviceName
         } catch {
-            Write-ColorMessage "Ошибка при удалении службы $serviceName!" -ForegroundColor Yellow
+            Write-ColorMessage "Ошибка при удалении службы $serviceName!" -color Green
+        }
+    }
+}
+
+# Проверка прав администратора
+If (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+{
+    Write-ColorMessage "Пожалуйста, запустите этот скрипт от имени администратора." -color Green
+    exit
+}
+
+$servicesToStop = @("ZapretService", "windivert", "zapret")
+$processesToStop = @("winws")
+
+foreach ($service in $servicesToStop) {
+    Stop-And-RemoveService -serviceName $service
+}
+
+foreach ($process in $processesToStop) {
+    if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
+        Write-ColorMessage "Остановка процесса $process..." -color Green
+        try {
+            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+        } catch {
+            Write-ColorMessage "Ошибка при остановке процесса $process!" -color Green
         }
     }
 }
 
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
-$zapretFolderPath = "$desktopPath\zapret"
+$defaultDestinationPath = $desktopPath
 $zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
 
-Stop-And-RemoveService -serviceName "ZapretService" -processName "winws"
-Stop-And-RemoveService -serviceName "windivert"
+# Запросить у пользователя путь для распаковки
+$destinationPath = Read-Host "Введите путь для распаковки или нажмите Enter для распаковки на рабочий стол"
+
+if (-not $destinationPath) {
+    $destinationPath = $defaultDestinationPath
+}
 
 if (Test-Path $zapretZipPath) {
-    Write-ColorMessage "Удаление старого ZIP архива..." -ForegroundColor Red
+    Write-ColorMessage "Удаление старого ZIP архива..." -color Green
     Remove-Item $zapretZipPath -Force
 }
 
-if (Test-Path $zapretFolderPath) {
-    Write-ColorMessage "Удаление старой папки..." -ForegroundColor Red
-    Remove-Item $zapretFolderPath -Recurse -Force
+if ($destinationPath -eq $desktopPath -and (Test-Path $desktopPath\zapret)) {
+    Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Green
+    Remove-Item $desktopPath\zapret -Recurse -Force
 }
 
-Write-ColorMessage "Скачивание ZIP файла..." -ForegroundColor Cyan
+Write-ColorMessage "Скачивание ZIP файла..." -color Green
 try {
     Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
-    Write-ColorMessage "ZIP файл успешно скачан!" -ForegroundColor Green
+    Write-ColorMessage "ZIP файл успешно скачан!" -color Green
 } catch {
-    Write-ColorMessage "Ошибка при скачивании файла!" -ForegroundColor Yellow
+    Write-ColorMessage "Ошибка при скачивании файла!" -color Green
     exit 1
 }
 
-Write-ColorMessage "Распаковка архива..." -ForegroundColor Cyan
+Write-ColorMessage "Распаковка архива..." -color Green
 try {
-    Expand-Archive -Path $zapretZipPath -DestinationPath $desktopPath -Force
-    Write-ColorMessage "Архив успешно распакован!" -ForegroundColor Green
+    Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force
+    Write-ColorMessage "Архив успешно распакован!" -color Green
 } catch {
-    Write-ColorMessage "Ошибка при распаковке архива!" -ForegroundColor Yellow
+    Write-ColorMessage "Ошибка при распаковке архива!" -color Green
     exit 1
 }
 
-Write-ColorMessage "Удаление ZIP файла..." -ForegroundColor Red
+Write-ColorMessage "Удаление ZIP файла..." -color Green
 Remove-Item $zapretZipPath -Force
 
-Write-ColorMessage "Открытие README..." -ForegroundColor Cyan
+Write-ColorMessage "Открытие README..." -color Green
 start https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt
 
-Write-ColorMessage "Завершение скрипта..." -ForegroundColor Magenta
-Exit
+Write-ColorMessage "Завершение скрипта..." -color Green
+pause
