@@ -1,23 +1,83 @@
+# Устанавливаем настройки и конфигурации
+$logFile = "$env:USERPROFILE\Desktop\zapret_script_log.txt"
+$defaultDownloadFolder = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
+$defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
+$downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
+$archiveName = "zapret_vayul.zip"
+$zapretFolderName = "zapret_vayul"
+$desktopPath = [System.Environment]::GetFolderPath('Desktop')
+
+# Функция для логирования
+function Write-Log($message) {
+    $logMessage = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
+    Add-Content -Path $logFile -Value $logMessage
+    Write-Host $logMessage
+}
+
 # Функция для проверки наличия процесса
 function Check-Process($processName) {
-    $process = Get-Process | Where-Object { $_.Name -eq $processName }
-    return $process
+    try {
+        $process = Get-Process | Where-Object { $_.Name -eq $processName }
+        return $process
+    } catch {
+        return $null
+    }
 }
 
 # Функция для остановки и удаления службы
 function Remove-Service($serviceName) {
-    $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-    if ($service) {
-        Stop-Service -Name $serviceName -Force
-        Set-Service -Name $serviceName -StartupType Disabled
-        sc.exe delete $serviceName
+    try {
+        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+        if ($service) {
+            $confirmation = Read-Host "Вы уверены, что хотите удалить службу '$serviceName'? (y/n)"
+            if ($confirmation -eq 'y') {
+                Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+                Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
+                sc.exe delete $serviceName -ErrorAction SilentlyContinue
+                Write-Log "Служба '$serviceName' была остановлена и удалена."
+            } else {
+                Write-Log "Удаление службы '$serviceName' было отменено."
+            }
+        } else {
+            Write-Log "Служба '$serviceName' не найдена."
+        }
+    } catch {
+        Write-Log "Ошибка при обработке службы '$serviceName'."
+    }
+}
+
+# Функция для скачивания файла
+function Download-File($url, $destination) {
+    try {
+        Write-Log "Начинаю скачивание файла с $url."
+        Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction SilentlyContinue
+        Write-Log "Скачивание завершено."
+    } catch {
+        Write-Log "Ошибка при скачивании файла: $_"
+    }
+}
+
+# Функция для распаковки архива
+function Extract-Archive($zipPath, $extractPath) {
+    try {
+        Write-Log "Распаковываю архив в $extractPath."
+        Expand-Archive -Path $zipPath -DestinationPath $extractPath -ErrorAction SilentlyContinue
+        Write-Log "Распаковка завершена."
+    } catch {
+        Write-Log "Ошибка при распаковке архива: $_"
     }
 }
 
 # Проверка и остановка процесса winws.exe
 $winwsProcess = Check-Process "winws"
 if ($winwsProcess) {
-    Stop-Process -Name "winws" -Force
+    $confirmation = Read-Host "Процесс 'winws.exe' найден. Хотите остановить его? (y/n)"
+    if ($confirmation -eq 'y') {
+        Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue
+        Write-Log "Процесс 'winws.exe' был остановлен."
+    } else {
+        Write-Log "Остановка процесса 'winws.exe' была отменена."
+    }
 }
 
 # Проверка и удаление служб windivert, ZapretService и zapret
@@ -27,33 +87,63 @@ foreach ($service in $servicesToRemove) {
 }
 
 # Скачивание архива zapret_vayul.zip
-$downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
-$downloadPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("MyDocuments"), "Downloads", "zapret_vayul.zip")
+$downloadFolder = Read-Host "Введите путь для скачивания архива (по умолчанию: $defaultDownloadFolder):"
+if (-not $downloadFolder) {
+    $downloadFolder = $defaultDownloadFolder
+}
 
-Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+# Проверка, существует ли путь для скачивания
+if (-not (Test-Path -Path $downloadFolder)) {
+    Write-Log "Путь для скачивания не существует: $downloadFolder. Использую путь по умолчанию."
+    $downloadFolder = $defaultDownloadFolder
+}
+
+$downloadPath = [System.IO.Path]::Combine($downloadFolder, $archiveName)
+
+# Если архив уже существует, запросим его перезапись
+if (Test-Path -Path $downloadPath) {
+    $overwrite = Read-Host "Архив уже существует. Хотите его перезаписать? (y/n)"
+    if ($overwrite -ne 'y') {
+        Write-Log "Скачивание было отменено."
+        exit
+    }
+}
+
+Download-File -url $downloadUrl -destination $downloadPath
 
 # Запрос у пользователя пути для распаковки
-$defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
-$extractPath = Read-Host "Введите путь для распаковки (по умолчанию на рабочий стол):"
+$extractPath = Read-Host "Введите путь для распаковки (по умолчанию: $defaultExtractPath):"
 if (-not $extractPath) {
     $extractPath = $defaultExtractPath
 }
 
-# Проверка и удаление папки zapret_vayul, если она существует
-$zapretFolderPath = [System.IO.Path]::Combine($extractPath, "zapret_vayul")
+# Проверка, существует ли путь для распаковки
+if (-not (Test-Path -Path $extractPath)) {
+    Write-Log "Путь для распаковки не существует: $extractPath. Использую путь по умолчанию."
+    $extractPath = $defaultExtractPath
+}
+
+# Удаление папки zapret_vayul, если она существует на пути распаковки
+$zapretFolderPath = [System.IO.Path]::Combine($extractPath, $zapretFolderName)
 if (Test-Path -Path $zapretFolderPath) {
-    Write-Host "Папка 'zapret_vayul' уже существует. Удаляю её..."
-    Remove-Item -Path $zapretFolderPath -Recurse -Force
+    Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
+    Remove-Item $desktopPath\zapret -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Log "Папка '$zapretFolderName' была удалена из пути '$extractPath'."
+} else {
+    Write-Log "Папка '$zapretFolderName' не найдена в пути '$extractPath'."
 }
 
 # Распаковка архива
-Expand-Archive -Path $downloadPath -DestinationPath $extractPath
+Extract-Archive -zipPath $downloadPath -extractPath $extractPath
 
 # Удаление архива после распаковки
-Remove-Item -Path $downloadPath
+Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
+Write-Log "Архив $archiveName был удален после распаковки."
 
 # Открытие сайта
 Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
+Write-Log "Открыт сайт 'readme.txt'."
 
 # Пауза
 Pause
+Write-Log "Скрипт завершен."
