@@ -1,142 +1,59 @@
-# Проверка прав администратора
-If (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "Пожалуйста, запустите этот скрипт от имени администратора." -ForegroundColor Red
-    exit
+# Функция для проверки наличия процесса
+function Check-Process($processName) {
+    $process = Get-Process | Where-Object { $_.Name -eq $processName }
+    return $process
 }
 
-function Write-ColorMessage {
-    param (
-        [string]$message,
-        [ConsoleColor]$color = [ConsoleColor]::Green
-    )
-    $currentColor = $Host.UI.RawUI.ForegroundColor
-    $Host.UI.RawUI.ForegroundColor = $color
-    Write-Host $message
-    $Host.UI.RawUI.ForegroundColor = $currentColor
-}
-
-function Stop-And-RemoveService {
-    param (
-        [string]$serviceName,
-        [string]$processName = $null
-    )
-
-    # Остановка процесса (если указан)
-    if ($processName) {
-        $process = Get-Process -Name $processName -ErrorAction SilentlyContinue
-        if ($process) {
-            Write-ColorMessage "Остановка процесса $processName..." -color Yellow
-            try {
-                Stop-Process -Name $processName -Force -ErrorAction Stop
-                Write-ColorMessage "Процесс $processName успешно остановлен." -color Green
-            } catch {
-                Write-ColorMessage "Ошибка при остановке процесса $processName: $($_.Exception.Message)" -color Red
-            }
-        } else {
-            Write-ColorMessage "Процесс $processName не найден." -color Cyan
-        }
-    }
-
-    # Остановка и удаление службы
+# Функция для остановки и удаления службы
+function Remove-Service($serviceName) {
     $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
     if ($service) {
-        Write-ColorMessage "Остановка службы $serviceName..." -color Yellow
-        try {
-            Stop-Service -Name $serviceName -Force -ErrorAction Stop
-            Write-ColorMessage "Служба $serviceName успешно остановлена." -color Green
-        } catch {
-            Write-ColorMessage "Ошибка при остановке службы $serviceName: $($_.Exception.Message)" -color Red
-        }
-
-        Write-ColorMessage "Удаление службы $serviceName..." -color Yellow
-        try {
-            sc.exe delete $serviceName | Out-Null
-            Write-ColorMessage "Служба $serviceName успешно удалена." -color Green
-        } catch {
-            Write-ColorMessage "Ошибка при удалении службы $serviceName: $($_.Exception.Message)" -color Red
-        }
-    } else {
-        Write-ColorMessage "Служба $serviceName не найдена." -color Cyan
+        Stop-Service -Name $serviceName -Force
+        Set-Service -Name $serviceName -StartupType Disabled
+        sc.exe delete $serviceName
     }
 }
 
-# Список служб и процессов для проверки
-$servicesToStop = @("ZapretService", "windivert", "zapret")
-$processesToStop = @("winws")
-
-# Остановка служб
-foreach ($service in $servicesToStop) {
-    Stop-And-RemoveService -serviceName $service
+# Проверка и остановка процесса winws.exe
+$winwsProcess = Check-Process "winws"
+if ($winwsProcess) {
+    Stop-Process -Name "winws" -Force
 }
 
-# Остановка процессов
-foreach ($process in $processesToStop) {
-    $processExists = Get-Process -Name $process -ErrorAction SilentlyContinue
-    if ($processExists) {
-        Write-ColorMessage "Остановка процесса $process..." -color Yellow
-        try {
-            Stop-Process -Name $process -Force -ErrorAction Stop
-            Write-ColorMessage "Процесс $process успешно остановлен." -color Green
-        } catch {
-            Write-ColorMessage "Ошибка при остановке процесса $process: $($_.Exception.Message)" -color Red
-        }
-    } else {
-        Write-ColorMessage "Процесс $process не найден." -color Cyan
-    }
+# Проверка и удаление служб windivert, ZapretService и zapret
+$servicesToRemove = @("windivert", "ZapretService", "zapret")
+foreach ($service in $servicesToRemove) {
+    Remove-Service $service
 }
 
-# Пути к файлам и папкам
-$desktopPath = [System.Environment]::GetFolderPath('Desktop')
-$downloadsPath = [System.Environment]::GetFolderPath('MyDocuments') + "\Downloads"
-$zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
-$defaultDestinationPath = $desktopPath
+# Скачивание архива zapret_vayul.zip
+$downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
+$downloadPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("MyDocuments"), "Downloads", "zapret_vayul.zip")
 
-$zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
+Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
 
-# Запрос пути для распаковки
-$destinationPath = Read-Host "Введите путь для распаковки или нажмите Enter для распаковки на рабочий стол"
-if (-not $destinationPath) {
-    $destinationPath = $defaultDestinationPath
+# Запрос у пользователя пути для распаковки
+$defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
+$extractPath = Read-Host "Введите путь для распаковки (по умолчанию на рабочий стол):"
+if (-not $extractPath) {
+    $extractPath = $defaultExtractPath
 }
 
-# Удаление старого архива
-if (Test-Path $zapretZipPath) {
-    Write-ColorMessage "Удаление старого ZIP архива..." -color Magenta
-    Remove-Item $zapretZipPath -Force
-}
-
-# Проверка и удаление папки zapret на рабочем столе
-if ($destinationPath -eq $desktopPath) {
-    $zapretFolderPath = "$desktopPath\zapret"
-    if (Test-Path $zapretFolderPath) {
-        Write-ColorMessage "Папка 'zapret' уже существует на рабочем столе. Удаляю её..." -color Magenta
-        Remove-Item $zapretFolderPath -Recurse -Force
-    }
-}
-
-# Скачивание архива
-Write-ColorMessage "Скачивание ZIP файла..." -color Blue
-try {
-    Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
-    Write-ColorMessage "ZIP файл успешно скачан!" -color Green
-} catch {
-    Write-ColorMessage "Ошибка при скачивании файла!" -color Red
-    exit 1
+# Проверка и удаление папки zapret_vayul, если она существует
+$zapretFolderPath = [System.IO.Path]::Combine($extractPath, "zapret_vayul")
+if (Test-Path -Path $zapretFolderPath) {
+    Write-Host "Папка 'zapret_vayul' уже существует. Удаляю её..."
+    Remove-Item -Path $zapretFolderPath -Recurse -Force
 }
 
 # Распаковка архива
-Write-ColorMessage "Распаковка архива..." -color Blue
-try {
-    Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force
-    Write-ColorMessage "Архив успешно распакован!" -color Green
-} catch {
-    Write-ColorMessage "Ошибка при распаковке архива!" -color Red
-    exit 1
-}
+Expand-Archive -Path $downloadPath -DestinationPath $extractPath
 
-# Удаление ZIP архива
-Write-ColorMessage "Удаление ZIP файла..." -color Magenta
-Remove-Item $zapretZipPath -Force
+# Удаление архива после распаковки
+Remove-Item -Path $downloadPath
 
-Write-ColorMessage "Скрипт успешно завершён!" -color Green
-pause
+# Открытие сайта
+Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
+
+# Пауза
+Pause
