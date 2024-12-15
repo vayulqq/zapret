@@ -89,7 +89,7 @@ foreach ($process in $processesToStop) {
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $downloadsPath = [System.Environment]::GetFolderPath('MyDocuments') + "\Downloads"
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
-$defaultDestinationPath = "$desktopPath"
+$defaultDestinationPath = $desktopPath
 
 $zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
 
