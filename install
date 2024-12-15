@@ -64,7 +64,7 @@ function Download-File($url, $destination) {
     }
 }
 
-# Скачивание архива zapret_vayul.zip
+# Путь для скачивания
 $downloadFolder = Read-Host "Введите путь для скачивания архива (по умолчанию: $defaultDownloadFolder):"
 if (-not $downloadFolder) {
     $downloadFolder = $defaultDownloadFolder
@@ -76,17 +76,17 @@ if (-not (Test-Path -Path $downloadFolder)) {
     $downloadFolder = $defaultDownloadFolder
 }
 
+# Путь к архиву
 $downloadPath = [System.IO.Path]::Combine($downloadFolder, $archiveName)
 
-# Если архив уже существует, запросим его перезапись
+# Если архив уже существует в папке загрузок, удаляем его
 if (Test-Path -Path $downloadPath) {
-    $overwrite = Read-Host "Архив уже существует. Хотите его перезаписать? (y/n)"
-    if ($overwrite -ne 'y') {
-        Write-Log "Скачивание было отменено."
-        exit
-    }
+    Write-Log "Архив уже существует в пути '$downloadFolder'. Удаляю его..."
+    Remove-Item -Path $downloadPath -Force
+    Write-Log "Архив '$archiveName' был удален."
 }
 
+# Скачиваем архив
 Download-File -url $downloadUrl -destination $downloadPath
 
 # Запрос у пользователя пути для распаковки
