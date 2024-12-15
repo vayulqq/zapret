@@ -6,6 +6,10 @@ $downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapre
 $archiveName = "zapret_vayul.zip"
 $zapretFolderName = "zapret_vayul"
 
+# Устанавливаем путь к рабочему столу
+$desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
+$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
+
 # Функция для логирования
 function Write-Log($message) {
     $logMessage = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
@@ -128,7 +132,7 @@ if (Test-Path -Path $zapretFolderPath) {
     Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
     try {
         # Удаляем папку рекурсивно с параметром Force
-        Remove-Item -Path $zapretFolderPath -Recurse -Force
+        Remove-Item $desktopPath\zapret -Recurse -Force -ErrorAction SilentlyContinue
         Write-Log "Папка '$zapretFolderName' была успешно удалена."
     } catch {
         Write-Host "Не удалось удалить папку '$zapretFolderName'. Ошибка: $_"
@@ -145,16 +149,14 @@ Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
 Write-Log "Архив $archiveName был удален после распаковки."
 
 # Удаление папки zapret_vayul с рабочего стола, если она существует
-$desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
-$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
 if (Test-Path -Path $zapretFolderPathDesktop) {
     Write-Host "Папка 'zapret' найдена на рабочем столе. Удаляю её..."
     try {
         # Удаляем папку с рабочего стола рекурсивно
-        Remove-Item -Path $zapretFolderPathDesktop -Recurse -Force
+        Remove-Item -Path $zapretFolderPathDesktop -Recurse -Force -ErrorAction SilentlyContinue
         Write-Log "Папка 'zapret' была успешно удалена с рабочего стола."
     } catch {
-        Write-Host "Не удалось удалить папку 'zapret' с рабочего стола. Ошибка: $_"
+        Write-Host "Не удалось удалить папку 'zapret' с рабочего стола."
     }
 } else {
     Write-Host "Папка 'zapret' не найдена на рабочем столе."
