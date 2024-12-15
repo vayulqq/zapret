@@ -1,5 +1,70 @@
-# Устанавливаем настройки и конфигурации
-$logFile = "$env:USERPROFILE\Desktop\zapret_script_log.txt"
+# Устанавливаем путь к рабочему столу
+$desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
+$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
+
+# Путь к лог-файлу
+$logFile = [System.IO.Path]::Combine($desktopPath, "zapret_log.txt")
+
+# Функция для записи в лог
+function Write-Log {
+    param (
+        [string]$message
+    )
+    
+    # Если лог-файл не существует, создаем его
+    if (-not (Test-Path -Path $logFile)) {
+        New-Item -Path $logFile -ItemType File -Force
+    }
+    
+    # Формируем лог-сообщение
+    $logMessage = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
+    
+    # Записываем в лог-файл
+    Add-Content -Path $logFile -Value $logMessage
+    Write-Host $logMessage
+}
+
+# Функция для удаления папки
+function Remove-Folder {
+    param (
+        [string]$folderPath
+    )
+
+    try {
+        # Проверяем, существует ли папка
+        if (Test-Path -Path $folderPath) {
+            Write-Host "Папка '$folderPath' найдена. Удаляю её..."
+            
+            # Проверка на открытые файлы или папки в процессе
+            $lockedFiles = Get-Process | Where-Object { $_.Modules.FileName -match [regex]::Escape($folderPath) }
+            if ($lockedFiles) {
+                Write-Host "Папка '$folderPath' используется процессами. Попробуйте закрыть все программы, использующие её."
+                return
+            }
+
+            # Попытка удаления папки рекурсивно
+            Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
+            Write-Host "Папка '$folderPath' была успешно удалена."
+        } else {
+            Write-Host "Папка '$folderPath' не найдена."
+        }
+    } catch {
+        Write-Host "Не удалось удалить папку '$folderPath'. Ошибка: $_"
+    }
+}
+
+# Попытка удалить папку с рабочего стола
+Remove-Folder -folderPath $zapretFolderPathDesktop
+
+# Если папка все еще не удалена, попробуем запустить с правами администратора
+if (Test-Path -Path $zapretFolderPathDesktop) {
+    Write-Host "Папка не удалена. Попробуем выполнить скрипт с правами администратора."
+    Start-Process powershell -ArgumentList "-NoExit", "-Command & {Remove-Item -Path '$zapretFolderPathDesktop' -Recurse -Force}" -Verb RunAs
+}
+
+# Прочие части скрипта...
+
+# Путь к загрузкам
 $defaultDownloadFolder = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
 $defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
 $downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
@@ -10,45 +75,6 @@ $zapretFolderName = "zapret_vayul"
 $desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
 $zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
 
-# Функция для логирования
-function Write-Log($message) {
-    $logMessage = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
-    Add-Content -Path $logFile -Value $logMessage
-    Write-Host $logMessage
-}
-
-# Функция для проверки наличия процесса
-function Check-Process($processName) {
-    try {
-        $process = Get-Process | Where-Object { $_.Name -eq $processName }
-        return $process
-    } catch {
-        return $null
-    }
-}
-
-# Функция для остановки и удаления службы
-function Remove-Service($serviceName) {
-    try {
-        $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-        if ($service) {
-            $confirmation = Read-Host "Вы уверены, что хотите удалить службу '$serviceName'? (y/n)"
-            if ($confirmation -eq 'y') {
-                Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
-                Set-Service -Name $serviceName -StartupType Disabled -ErrorAction SilentlyContinue
-                sc.exe delete $serviceName -ErrorAction SilentlyContinue
-                Write-Log "Служба '$serviceName' была остановлена и удалена."
-            } else {
-                Write-Log "Удаление службы '$serviceName' было отменено."
-            }
-        } else {
-            Write-Log "Служба '$serviceName' не найдена."
-        }
-    } catch {
-        Write-Log "Ошибка при обработке службы '$serviceName'."
-    }
-}
-
 # Функция для скачивания файла
 function Download-File($url, $destination) {
     try {
@@ -58,35 +84,6 @@ function Download-File($url, $destination) {
     } catch {
         Write-Log "Ошибка при скачивании файла: $_"
     }
-}
-
-# Функция для распаковки архива
-function Extract-Archive($zipPath, $extractPath) {
-    try {
-        Write-Log "Распаковываю архив в $extractPath."
-        Expand-Archive -Path $zipPath -DestinationPath $extractPath -ErrorAction SilentlyContinue
-        Write-Log "Распаковка завершена."
-    } catch {
-        Write-Log "Ошибка при распаковке архива: $_"
-    }
-}
-
-# Проверка и остановка процесса winws.exe
-$winwsProcess = Check-Process "winws"
-if ($winwsProcess) {
-    $confirmation = Read-Host "Процесс 'winws.exe' найден. Хотите остановить его? (y/n)"
-    if ($confirmation -eq 'y') {
-        Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue
-        Write-Log "Процесс 'winws.exe' был остановлен."
-    } else {
-        Write-Log "Остановка процесса 'winws.exe' была отменена."
-    }
-}
-
-# Проверка и удаление служб windivert, ZapretService и zapret
-$servicesToRemove = @("windivert", "ZapretService", "zapret")
-foreach ($service in $servicesToRemove) {
-    Remove-Service $service
 }
 
 # Скачивание архива zapret_vayul.zip
@@ -132,7 +129,7 @@ if (Test-Path -Path $zapretFolderPath) {
     Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
     try {
         # Удаляем папку рекурсивно с параметром Force
-        Remove-Item $desktopPath\zapret -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $zapretFolderPath -Recurse -Force -ErrorAction SilentlyContinue
         Write-Log "Папка '$zapretFolderName' была успешно удалена."
     } catch {
         Write-Host "Не удалось удалить папку '$zapretFolderName'. Ошибка: $_"
@@ -142,6 +139,16 @@ if (Test-Path -Path $zapretFolderPath) {
 }
 
 # Распаковка архива
+function Extract-Archive($zipPath, $extractPath) {
+    try {
+        Write-Log "Распаковываю архив в $extractPath."
+        Expand-Archive -Path $zipPath -DestinationPath $extractPath -ErrorAction SilentlyContinue
+        Write-Log "Распаковка завершена."
+    } catch {
+        Write-Log "Ошибка при распаковке архива: $_"
+    }
+}
+
 Extract-Archive -zipPath $downloadPath -extractPath $extractPath
 
 # Удаление архива после распаковки
@@ -149,18 +156,7 @@ Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
 Write-Log "Архив $archiveName был удален после распаковки."
 
 # Удаление папки zapret_vayul с рабочего стола, если она существует
-if (Test-Path -Path $zapretFolderPathDesktop) {
-    Write-Host "Папка 'zapret' найдена на рабочем столе. Удаляю её..."
-    try {
-        # Удаляем папку с рабочего стола рекурсивно
-        Remove-Item -Path $zapretFolderPathDesktop -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Log "Папка 'zapret' была успешно удалена с рабочего стола."
-    } catch {
-        Write-Host "Не удалось удалить папку 'zapret' с рабочего стола."
-    }
-} else {
-    Write-Host "Папка 'zapret' не найдена на рабочем столе."
-}
+Remove-Folder -folderPath $zapretFolderPathDesktop
 
 # Открытие сайта
 Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
