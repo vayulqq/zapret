@@ -1,6 +1,6 @@
 # Устанавливаем путь к рабочему столу
 $desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
-$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
+$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret_vayul')
 
 # Путь к лог-файлу
 $logFile = [System.IO.Path]::Combine($desktopPath, "zapret_log.txt")
@@ -62,8 +62,6 @@ if (Test-Path -Path $zapretFolderPathDesktop) {
     Start-Process powershell -ArgumentList "-NoExit", "-Command & {Remove-Item -Path '$zapretFolderPathDesktop' -Recurse -Force}" -Verb RunAs
 }
 
-# Прочие части скрипта...
-
 # Путь к загрузкам
 $defaultDownloadFolder = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
 $defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
@@ -73,7 +71,7 @@ $zapretFolderName = "zapret_vayul"
 
 # Устанавливаем путь к рабочему столу
 $desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
-$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
+$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret_vayul')
 
 # Функция для скачивания файла
 function Download-File($url, $destination) {
