@@ -1,3 +1,9 @@
+# Проверка прав администратора
+If (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-ColorMessage "Пожалуйста, запустите этот скрипт от имени администратора." -color Red
+    exit
+}
+
 function Write-ColorMessage {
     param (
         [string]$message,
@@ -16,36 +22,29 @@ function Stop-And-RemoveService {
     )
 
     if ($processName -and (Get-Process -Name $processName -ErrorAction SilentlyContinue)) {
-        Write-ColorMessage "Остановка процесса $processName..." -color Green
+        Write-ColorMessage "Остановка процесса $processName..." -color Yellow
         try {
             Stop-Process -Name $processName -Force -ErrorAction SilentlyContinue
         } catch {
-            # Ошибка подавлена
+            Write-ColorMessage "Ошибка при остановке процесса $processName!" -color Red
         }
     }
 
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
-        Write-ColorMessage "Остановка службы $serviceName..." -color Green
+        Write-ColorMessage "Остановка службы $serviceName..." -color Yellow
         try {
             Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
         } catch {
-            # Ошибка подавлена
+            Write-ColorMessage "Ошибка при остановке службы $serviceName!" -color Red
         }
 
-        Write-ColorMessage "Удаление службы $serviceName..." -color Green
+        Write-ColorMessage "Удаление службы $serviceName..." -color Yellow
         try {
-            & sc.exe delete $serviceName -ErrorAction SilentlyContinue
+            & sc.exe delete $serviceName
         } catch {
-            # Ошибка подавлена
+            Write-ColorMessage "Ошибка при удалении службы $serviceName!" -color Red
         }
     }
-}
-
-# Проверка прав администратора
-If (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
-{
-    Write-ColorMessage "Пожалуйста, запустите этот скрипт от имени администратора." -color Green
-    exit
 }
 
 $servicesToStop = @("ZapretService", "windivert", "zapret")
@@ -57,18 +56,18 @@ foreach ($service in $servicesToStop) {
 
 foreach ($process in $processesToStop) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-        Write-ColorMessage "Остановка процесса $process..." -color Green
+        Write-ColorMessage "Остановка процесса $process..." -color Yellow
         try {
             Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         } catch {
-            # Ошибка подавлена
+            Write-ColorMessage "Ошибка при остановке процесса $process!" -color Red
         }
     }
 }
 
 $desktopPath = [System.Environment]::GetFolderPath('Desktop')
 $zapretZipPath = "$env:USERPROFILE\Downloads\zapret.zip"
-$defaultDestinationPath = $desktopPath
+$defaultDestinationPath = "$desktopPath\zapret"
 $zipUrl = "https://github.com/vayulqq/zapret/releases/download/qedqedndndn/zapret.zip"
 
 # Запросить у пользователя путь для распаковки
@@ -79,44 +78,48 @@ if (-not $destinationPath) {
 }
 
 if (Test-Path $zapretZipPath) {
-    Write-ColorMessage "Удаление старого ZIP архива..." -color Green
-    Remove-Item $zapretZipPath -Force -ErrorAction SilentlyContinue
+    Write-ColorMessage "Удаление старого ZIP архива..." -color Magenta
+    Remove-Item $zapretZipPath -Force
 }
 
-if ($destinationPath -eq $desktopPath -and (Test-Path $desktopPath\zapret)) {
-    $deleteFolder = Read-Host "Папка zapret уже существует на рабочем столе. Удалить её? (Y/N)"
-    if ($deleteFolder -eq 'Y') {
-        Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Green
-        Remove-Item $desktopPath\zapret -Recurse -Force -ErrorAction SilentlyContinue
+if ($destinationPath -eq "$desktopPath\zapret" -and (Test-Path "$desktopPath\zapret")) {
+    $deleteChoice = Read-Host "Папка 'zapret' уже существует. Удалить ее? (Да/Нет)"
+    if ($deleteChoice -eq 'Да') {
+        Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Magenta
+        Remove-Item "$desktopPath\zapret" -Recurse -Force
     } else {
-        Write-ColorMessage "Операция отменена пользователем." -color Green
-        exit
+        $destinationPath = "$desktopPath\zapret_vayul"
+        Write-ColorMessage "Будет создана новая папка: zapret_vayul" -color Cyan
     }
 }
 
-Write-ColorMessage "Скачивание ZIP файла..." -color Green
+Write-ColorMessage "Скачивание ZIP файла..." -color Blue
 try {
-    Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath -ErrorAction SilentlyContinue
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
     Write-ColorMessage "ZIP файл успешно скачан!" -color Green
 } catch {
-    # Ошибка подавлена
+    Write-ColorMessage "Ошибка при скачивании файла!" -color Red
     exit 1
 }
 
-Write-ColorMessage "Распаковка архива..." -color Green
+Write-ColorMessage "Распаковка архива..." -color Blue
 try {
-    Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force -ErrorAction SilentlyContinue
+    Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force
     Write-ColorMessage "Архив успешно распакован!" -color Green
+    # Переименование папки zapret
+    if ($deleteChoice -ne 'Да') {
+        Rename-Item -Path "$destinationPath\zapret" -NewName "zapret_vayul"
+    }
 } catch {
-    # Ошибка подавлена
+    Write-ColorMessage "Ошибка при распаковке архива!" -color Red
     exit 1
 }
 
-Write-ColorMessage "Удаление ZIP файла..." -color Green
-Remove-Item $zapretZipPath -Force -ErrorAction SilentlyContinue
+Write-ColorMessage "Удаление ZIP файла..." -color Magenta
+Remove-Item $zapretZipPath -Force
 
-Write-ColorMessage "Открытие README..." -color Green
-start https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt
+Write-ColorMessage "Открытие README..." -color Cyan
+Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
 
 Write-ColorMessage "Завершение скрипта..." -color Green
-pause
+stop
