@@ -54,7 +54,7 @@ function Remove-Folder {
 }
 
 # Попытка удалить папку с рабочего стола
-Remove-Folder -folderPath $zapretFolderPathDesktop
+Remove-Folder -folderPath $zapret_vayulFolderPathDesktop
 
 # Если папка все еще не удалена, попробуем запустить с правами администратора
 if (Test-Path -Path $zapretFolderPathDesktop) {
