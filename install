@@ -35,13 +35,6 @@ function Remove-Folder {
         if (Test-Path -Path $folderPath) {
             Write-Host "Папка '$folderPath' найдена. Удаляю её..."
             
-            # Проверка на открытые файлы или папки в процессе
-            $lockedFiles = Get-Process | Where-Object { $_.Modules.FileName -match [regex]::Escape($folderPath) }
-            if ($lockedFiles) {
-                Write-Host "Папка '$folderPath' используется процессами. Попробуйте закрыть все программы, использующие её."
-                return
-            }
-
             # Попытка удаления папки рекурсивно
             Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
             Write-Host "Папка '$folderPath' была успешно удалена."
@@ -54,13 +47,7 @@ function Remove-Folder {
 }
 
 # Попытка удалить папку с рабочего стола
-Remove-Folder -folderPath $zapret_vayulFolderPathDesktop
-
-# Если папка все еще не удалена, попробуем запустить с правами администратора
-if (Test-Path -Path $zapretFolderPathDesktop) {
-    Write-Host "Папка не удалена. Попробуем выполнить скрипт с правами администратора."
-    Start-Process powershell -ArgumentList "-NoExit", "-Command & {Remove-Item -Path '$zapretFolderPathDesktop' -Recurse -Force}" -Verb RunAs
-}
+Remove-Folder -folderPath $zapretFolderPathDesktop
 
 # Путь к загрузкам
 $defaultDownloadFolder = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
