@@ -84,8 +84,14 @@ if (Test-Path $zapretZipPath) {
 }
 
 if ($destinationPath -eq $desktopPath -and (Test-Path $desktopPath\zapret)) {
-    Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Green
-    Remove-Item $desktopPath\zapret -Recurse -Force
+    $deleteFolder = Read-Host "Папка zapret уже существует на рабочем столе. Удалить её? (Y/N)"
+    if ($deleteFolder -eq 'Y') {
+        Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Green
+        Remove-Item $desktopPath\zapret -Recurse -Force
+    } else {
+        Write-ColorMessage "Операция отменена пользователем." -color Green
+        exit
+    }
 }
 
 Write-ColorMessage "Скачивание ZIP файла..." -color Green
