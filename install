@@ -46,19 +46,12 @@ function Remove-Folder {
     }
 }
 
-# Попытка удалить папку с рабочего стола
-Remove-Folder -folderPath $zapretFolderPathDesktop
-
 # Путь к загрузкам
 $defaultDownloadFolder = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
 $defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
 $downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
 $archiveName = "zapret_vayul.zip"
 $zapretFolderName = "zapret_vayul"
-
-# Устанавливаем путь к рабочему столу
-$desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
-$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret_vayul')
 
 # Функция для скачивания файла
 function Download-File($url, $destination) {
@@ -108,19 +101,21 @@ if (-not (Test-Path -Path $extractPath)) {
     $extractPath = $defaultExtractPath
 }
 
-# Удаление папки zapret_vayul, если она существует на пути распаковки
-$zapretFolderPath = [System.IO.Path]::Combine($extractPath, $zapretFolderName)
-if (Test-Path -Path $zapretFolderPath) {
-    Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
-    try {
-        # Удаляем папку рекурсивно с параметром Force
-        Remove-Item -Path $zapretFolderPath -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Log "Папка '$zapretFolderName' была успешно удалена."
-    } catch {
-        Write-Host "Не удалось удалить папку '$zapretFolderName'. Ошибка: $_"
+# Удаление папки zapret_vayul, если она существует на пути распаковки и если путь распаковки - это рабочий стол
+if ($extractPath -eq $defaultExtractPath) {
+    $zapretFolderPath = [System.IO.Path]::Combine($extractPath, $zapretFolderName)
+    if (Test-Path -Path $zapretFolderPath) {
+        Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
+        try {
+            # Удаляем папку рекурсивно с параметром Force
+            Remove-Item -Path $zapretFolderPath -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Log "Папка '$zapretFolderName' была успешно удалена."
+        } catch {
+            Write-Host "Не удалось удалить папку '$zapretFolderName'. Ошибка: $_"
+        }
+    } else {
+        Write-Log "Папка '$zapretFolderName' не найдена в пути '$extractPath'."
     }
-} else {
-    Write-Log "Папка '$zapretFolderName' не найдена в пути '$extractPath'."
 }
 
 # Распаковка архива
@@ -136,9 +131,11 @@ function Extract-Archive($zipPath, $extractPath) {
 
 Extract-Archive -zipPath $downloadPath -extractPath $extractPath
 
-# Удаление архива после распаковки
-Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
-Write-Log "Архив $archiveName был удален после распаковки."
+# Удаление архива, если он был скачан в папку загрузок
+if ($downloadFolder -eq $defaultDownloadFolder) {
+    Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
+    Write-Log "Архив $archiveName был удален после распаковки."
+}
 
 # Удаление папки zapret_vayul с рабочего стола, если она существует
 Remove-Folder -folderPath $zapretFolderPathDesktop
