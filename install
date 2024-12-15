@@ -20,7 +20,7 @@ function Stop-And-RemoveService {
         try {
             Stop-Process -Name $processName -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-ColorMessage "Ошибка при остановке процесса $processName!" -color Green
+            # Ошибка подавлена
         }
     }
 
@@ -29,14 +29,14 @@ function Stop-And-RemoveService {
         try {
             Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-ColorMessage "Ошибка при остановке службы $serviceName!" -color Green
+            # Ошибка подавлена
         }
 
         Write-ColorMessage "Удаление службы $serviceName..." -color Green
         try {
-            & sc.exe delete $serviceName
+            & sc.exe delete $serviceName -ErrorAction SilentlyContinue
         } catch {
-            Write-ColorMessage "Ошибка при удалении службы $serviceName!" -color Green
+            # Ошибка подавлена
         }
     }
 }
@@ -61,7 +61,7 @@ foreach ($process in $processesToStop) {
         try {
             Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         } catch {
-            Write-ColorMessage "Ошибка при остановке процесса $process!" -color Green
+            # Ошибка подавлена
         }
     }
 }
@@ -80,14 +80,14 @@ if (-not $destinationPath) {
 
 if (Test-Path $zapretZipPath) {
     Write-ColorMessage "Удаление старого ZIP архива..." -color Green
-    Remove-Item $zapretZipPath -Force
+    Remove-Item $zapretZipPath -Force -ErrorAction SilentlyContinue
 }
 
 if ($destinationPath -eq $desktopPath -and (Test-Path $desktopPath\zapret)) {
     $deleteFolder = Read-Host "Папка zapret уже существует на рабочем столе. Удалить её? (Y/N)"
     if ($deleteFolder -eq 'Y') {
         Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Green
-        Remove-Item $desktopPath\zapret -Recurse -Force
+        Remove-Item $desktopPath\zapret -Recurse -Force -ErrorAction SilentlyContinue
     } else {
         Write-ColorMessage "Операция отменена пользователем." -color Green
         exit
@@ -96,24 +96,24 @@ if ($destinationPath -eq $desktopPath -and (Test-Path $desktopPath\zapret)) {
 
 Write-ColorMessage "Скачивание ZIP файла..." -color Green
 try {
-    Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zapretZipPath -ErrorAction SilentlyContinue
     Write-ColorMessage "ZIP файл успешно скачан!" -color Green
 } catch {
-    Write-ColorMessage "Ошибка при скачивании файла!" -color Green
+    # Ошибка подавлена
     exit 1
 }
 
 Write-ColorMessage "Распаковка архива..." -color Green
 try {
-    Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force
+    Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force -ErrorAction SilentlyContinue
     Write-ColorMessage "Архив успешно распакован!" -color Green
 } catch {
-    Write-ColorMessage "Ошибка при распаковке архива!" -color Green
+    # Ошибка подавлена
     exit 1
 }
 
 Write-ColorMessage "Удаление ZIP файла..." -color Green
-Remove-Item $zapretZipPath -Force
+Remove-Item $zapretZipPath -Force -ErrorAction SilentlyContinue
 
 Write-ColorMessage "Открытие README..." -color Green
 start https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt
