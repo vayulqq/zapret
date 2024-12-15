@@ -5,7 +5,6 @@ $defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("De
 $downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
 $archiveName = "zapret_vayul.zip"
 $zapretFolderName = "zapret_vayul"
-$desktopPath = [System.Environment]::GetFolderPath('Desktop')
 
 # Функция для логирования
 function Write-Log($message) {
@@ -127,8 +126,13 @@ if (-not (Test-Path -Path $extractPath)) {
 $zapretFolderPath = [System.IO.Path]::Combine($extractPath, $zapretFolderName)
 if (Test-Path -Path $zapretFolderPath) {
     Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
-    Remove-Item $desktopPath\zapret -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Log "Папка '$zapretFolderName' была удалена из пути '$extractPath'."
+    try {
+        # Удаляем папку рекурсивно с параметром Force
+        Remove-Item -Path $zapretFolderPath -Recurse -Force
+        Write-Log "Папка '$zapretFolderName' была успешно удалена."
+    } catch {
+        Write-Host "Не удалось удалить папку '$zapretFolderName'. Ошибка: $_"
+    }
 } else {
     Write-Log "Папка '$zapretFolderName' не найдена в пути '$extractPath'."
 }
@@ -139,6 +143,22 @@ Extract-Archive -zipPath $downloadPath -extractPath $extractPath
 # Удаление архива после распаковки
 Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
 Write-Log "Архив $archiveName был удален после распаковки."
+
+# Удаление папки zapret_vayul с рабочего стола, если она существует
+$desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
+$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret')
+if (Test-Path -Path $zapretFolderPathDesktop) {
+    Write-Host "Папка 'zapret' найдена на рабочем столе. Удаляю её..."
+    try {
+        # Удаляем папку с рабочего стола рекурсивно
+        Remove-Item -Path $zapretFolderPathDesktop -Recurse -Force
+        Write-Log "Папка 'zapret' была успешно удалена с рабочего стола."
+    } catch {
+        Write-Host "Не удалось удалить папку 'zapret' с рабочего стола. Ошибка: $_"
+    }
+} else {
+    Write-Host "Папка 'zapret' не найдена на рабочем столе."
+}
 
 # Открытие сайта
 Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
