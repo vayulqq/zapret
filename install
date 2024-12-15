@@ -82,14 +82,18 @@ if (Test-Path $zapretZipPath) {
     Remove-Item $zapretZipPath -Force
 }
 
-if ($destinationPath -eq "$desktopPath\zapret" -and (Test-Path "$desktopPath\zapret")) {
-    $deleteChoice = Read-Host "Папка 'zapret' уже существует. Удалить ее? (Да/Нет)"
-    if ($deleteChoice -eq 'Да') {
-        Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Magenta
-        Remove-Item "$desktopPath\zapret" -Recurse -Force
-    } else {
-        $destinationPath = "$desktopPath\zapret_vayul"
-        Write-ColorMessage "Будет создана новая папка: zapret_vayul" -color Cyan
+# Проверка и удаление существующих папок zapret и zapret_vayul на рабочем столе
+if ($destinationPath -eq "$desktopPath\zapret") {
+    if (Test-Path "$desktopPath\zapret_vayul") {
+        Write-ColorMessage "Удаление существующей папки zapret_vayul с рабочего стола..." -color Magenta
+        Remove-Item "$desktopPath\zapret_vayul" -Recurse -Force
+    }
+    if (Test-Path "$desktopPath\zapret") {
+        $deleteChoice = Read-Host "Папка 'zapret' уже существует. Удалить ее? (Да/Нет)"
+        if ($deleteChoice -eq 'Да') {
+            Write-ColorMessage "Удаление старой папки zapret с рабочего стола..." -color Magenta
+            Remove-Item "$desktopPath\zapret" -Recurse -Force
+        }
     }
 }
 
@@ -106,9 +110,12 @@ Write-ColorMessage "Распаковка архива..." -color Blue
 try {
     Expand-Archive -Path $zapretZipPath -DestinationPath $destinationPath -Force
     Write-ColorMessage "Архив успешно распакован!" -color Green
-    # Переименование папки zapret
-    if ($deleteChoice -ne 'Да') {
-        Rename-Item -Path "$destinationPath\zapret" -NewName "zapret_vayul"
+    # Если распаковка на рабочий стол, переименовать папку в zapret_vayul
+    if ($destinationPath -eq "$desktopPath\zapret") {
+        Rename-Item -Path "$destinationPath" -NewName "zapret_vayul"
+        Write-ColorMessage "Папка переименована в zapret_vayul" -color Cyan
+    } else {
+        Write-ColorMessage "Папка будет называться zapret" -color Cyan
     }
 } catch {
     Write-ColorMessage "Ошибка при распаковке архива!" -color Red
@@ -122,4 +129,4 @@ Write-ColorMessage "Открытие README..." -color Cyan
 Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
 
 Write-ColorMessage "Завершение скрипта..." -color Green
-stop
+pause
