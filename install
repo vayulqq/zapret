@@ -21,6 +21,7 @@ function Stop-And-RemoveService {
         [string]$processName = $null
     )
 
+    # Остановка связанного процесса, если он есть
     if ($processName -and (Get-Process -Name $processName -ErrorAction SilentlyContinue)) {
         Write-ColorMessage "Остановка процесса $processName..." -color Yellow
         try {
@@ -30,26 +31,33 @@ function Stop-And-RemoveService {
         }
     }
 
+    # Остановка службы
     if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
         Write-ColorMessage "Остановка службы $serviceName..." -color Yellow
         try {
             Stop-Service -Name $serviceName -Force -ErrorAction SilentlyContinue
+            Write-ColorMessage "Служба $serviceName остановлена!" -color Green
         } catch {
             Write-ColorMessage "Ошибка при остановке службы $serviceName!" -color Red
         }
 
+        # Удаление службы
         Write-ColorMessage "Удаление службы $serviceName..." -color Yellow
         try {
             & sc.exe delete $serviceName
+            Write-ColorMessage "Служба $serviceName удалена!" -color Green
         } catch {
             Write-ColorMessage "Ошибка при удалении службы $serviceName!" -color Red
         }
+    } else {
+        Write-ColorMessage "Служба $serviceName не найдена!" -color Red
     }
 }
 
 $servicesToStop = @("ZapretService", "windivert", "zapret")
 $processesToStop = @("winws")
 
+# Остановка служб и процессов
 foreach ($service in $servicesToStop) {
     Stop-And-RemoveService -serviceName $service
 }
@@ -62,6 +70,8 @@ foreach ($process in $processesToStop) {
         } catch {
             Write-ColorMessage "Ошибка при остановке процесса $process!" -color Red
         }
+    } else {
+        Write-ColorMessage "Процесс $process не найден!" -color Red
     }
 }
 
