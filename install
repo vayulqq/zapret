@@ -1,149 +1,108 @@
-# Устанавливаем путь к рабочему столу
-$desktopPath = [System.IO.Path]::Combine($env:USERPROFILE, 'Desktop')
-$zapretFolderPathDesktop = [System.IO.Path]::Combine($desktopPath, 'zapret_vayul')
+# Устанавливаем стратегию обработки ошибок
+$ErrorActionPreference = "Stop"
 
-# Путь к лог-файлу
-$logFile = [System.IO.Path]::Combine($desktopPath, "zapret_log.txt")
-
-# Функция для записи в лог
-function Write-Log {
-    param (
-        [string]$message
-    )
-    
-    # Если лог-файл не существует, создаем его
-    if (-not (Test-Path -Path $logFile)) {
-        New-Item -Path $logFile -ItemType File -Force
-    }
-    
-    # Формируем лог-сообщение
-    $logMessage = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $message"
-    
-    # Записываем в лог-файл
-    Add-Content -Path $logFile -Value $logMessage
-    Write-Host $logMessage
+# Завершаем процесс winws, если он работает
+try {
+    Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue
+    Write-Host "Процесс winws завершён."
+} catch {
+    Write-Host "Процесс winws не был найден."
 }
 
-# Функция для удаления папки
-function Remove-Folder {
-    param (
-        [string]$folderPath
-    )
-
+# Останавливаем и удаляем службы
+$services = @("zapret", "windivert", "windivert14")
+foreach ($service in $services) {
     try {
-        # Проверяем, существует ли папка
-        if (Test-Path -Path $folderPath) {
-            Write-Host "Папка '$folderPath' найдена. Удаляю её..."
-            
-            # Попытка удаления папки рекурсивно
-            Remove-Item -Path $folderPath -Recurse -Force -ErrorAction Stop
-            Write-Host "Папка '$folderPath' была успешно удалена."
-        } else {
-            Write-Host "Папка '$folderPath' не найдена."
-        }
+        Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
+        Write-Host "Служба $service остановлена."
     } catch {
-        Write-Host "Не удалось удалить папку '$folderPath'. Ошибка: $_"
+        Write-Host "Служба $service не была найдена."
     }
-}
-
-# Путь к загрузкам
-$defaultDownloadFolder = [System.IO.Path]::Combine([Environment]::GetFolderPath("UserProfile"), "Downloads")
-$defaultExtractPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"))
-$downloadUrl = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
-$archiveName = "zapret_vayul.zip"
-$zapretFolderName = "zapret_vayul"
-
-# Функция для скачивания файла
-function Download-File($url, $destination) {
+    
     try {
-        Write-Log "Начинаю скачивание файла с $url."
-        Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction SilentlyContinue
-        Write-Log "Скачивание завершено."
+        sc.exe delete $service | Out-Null
+        Write-Host "Служба $service удалена."
     } catch {
-        Write-Log "Ошибка при скачивании файла: $_"
+        Write-Host "Не удалось удалить службу $service."
     }
 }
 
-# Путь для скачивания
-$downloadFolder = Read-Host "Введите путь для скачивания архива (по умолчанию: $defaultDownloadFolder):"
-if (-not $downloadFolder) {
-    $downloadFolder = $defaultDownloadFolder
+### Параметры путей для загрузок и рабочего стола
+$DownloadsPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath('UserProfile'), 'Downloads')
+$DesktopPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'))
+
+# Ссылка на архив
+$Url = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
+
+# Локальные пути для архива и распакованной папки
+$ArchivePath = Join-Path $DownloadsPath "zapret_vayul.zip"
+$ExtractedPath = Join-Path $DesktopPath "zapret_vayul"
+
+# Удаляем старые файлы, если они существуют
+if (Test-Path $ArchivePath) {
+    Remove-Item -Path $ArchivePath -Force
+    Write-Host "Старый архив удалён из загрузок."
 }
 
-# Проверка, существует ли путь для скачивания
-if (-not (Test-Path -Path $downloadFolder)) {
-    Write-Log "Путь для скачивания не существует: $downloadFolder. Использую путь по умолчанию."
-    $downloadFolder = $defaultDownloadFolder
-}
-
-# Путь к архиву
-$downloadPath = [System.IO.Path]::Combine($downloadFolder, $archiveName)
-
-# Если архив уже существует в папке загрузок, удаляем его
-if (Test-Path -Path $downloadPath) {
-    Write-Log "Архив уже существует в пути '$downloadFolder'. Удаляю его..."
-    Remove-Item -Path $downloadPath -Force
-    Write-Log "Архив '$archiveName' был удален."
+if (Test-Path $ExtractedPath) {
+    Remove-Item -Path $ExtractedPath -Recurse -Force
+    Write-Host "Старая папка удалена с рабочего стола."
 }
 
 # Скачиваем архив
-Download-File -url $downloadUrl -destination $downloadPath
+Write-Host "Скачивание архива..."
+Invoke-WebRequest -Uri $Url -OutFile $ArchivePath
+Write-Host "Архив загружен в папку загрузок."
 
-# Запрос у пользователя пути для распаковки
-$extractPath = Read-Host "Введите путь для распаковки (по умолчанию: $defaultExtractPath):"
-if (-not $extractPath) {
-    $extractPath = $defaultExtractPath
-}
-
-# Проверка, существует ли путь для распаковки
-if (-not (Test-Path -Path $extractPath)) {
-    Write-Log "Путь для распаковки не существует: $extractPath. Использую путь по умолчанию."
-    $extractPath = $defaultExtractPath
-}
-
-# Удаление папки zapret_vayul, если она существует на пути распаковки и если путь распаковки - это рабочий стол
-if ($extractPath -eq $defaultExtractPath) {
-    $zapretFolderPath = [System.IO.Path]::Combine($extractPath, $zapretFolderName)
-    if (Test-Path -Path $zapretFolderPath) {
-        Write-Host "Папка '$zapretFolderName' уже существует в пути '$extractPath'. Удаляю её..."
-        try {
-            # Удаляем папку рекурсивно с параметром Force
-            Remove-Item -Path $zapretFolderPath -Recurse -Force -ErrorAction SilentlyContinue
-            Write-Log "Папка '$zapretFolderName' была успешно удалена."
-        } catch {
-            Write-Host "Не удалось удалить папку '$zapretFolderName'. Ошибка: $_"
-        }
-    } else {
-        Write-Log "Папка '$zapretFolderName' не найдена в пути '$extractPath'."
-    }
-}
-
-# Распаковка архива
-function Extract-Archive($zipPath, $extractPath) {
+# Проверка целостности архива
+function Test-ZipFile {
+    param ([string]$FilePath)
     try {
-        Write-Log "Распаковываю архив в $extractPath."
-        Expand-Archive -Path $zipPath -DestinationPath $extractPath -ErrorAction SilentlyContinue
-        Write-Log "Распаковка завершена."
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::OpenRead($FilePath).Dispose()
+        return $true
     } catch {
-        Write-Log "Ошибка при распаковке архива: $_"
+        return $false
     }
 }
 
-Extract-Archive -zipPath $downloadPath -extractPath $extractPath
-
-# Удаление архива, если он был скачан в папку загрузок
-if ($downloadFolder -eq $defaultDownloadFolder) {
-    Remove-Item -Path $downloadPath -ErrorAction SilentlyContinue
-    Write-Log "Архив $archiveName был удален после распаковки."
+if (-Not (Test-ZipFile -FilePath $ArchivePath)) {
+    Write-Host "Ошибка: Файл $ArchivePath не является действительным ZIP-архивом или повреждён."
+    exit
 }
 
-# Удаление папки zapret_vayul с рабочего стола, если она существует
-Remove-Folder -folderPath $zapretFolderPathDesktop
+# Распаковываем архив во временную папку
+Write-Host "Распаковка архива..."
+$TempExtractPath = Join-Path $DownloadsPath "temp_zapret_vayul"
 
-# Открытие сайта
-Start-Process "https://raw.githubusercontent.com/vayulqq/zapret/main/readme.txt"
-Write-Log "Открыт сайт 'readme.txt'."
+# Удаляем временную папку, если существует
+if (Test-Path $TempExtractPath) {
+    Remove-Item -Path $TempExtractPath -Recurse -Force
+}
 
-# Пауза
-Pause
-Write-Log "Скрипт завершен."
+New-Item -ItemType Directory -Path $TempExtractPath | Out-Null
+
+# Распаковываем архив
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $TempExtractPath)
+Write-Host "Архив успешно распакован во временную папку."
+
+# Находим внутреннюю папку и перемещаем её на рабочий стол
+$InnerFolder = Get-ChildItem -Path $TempExtractPath -Directory | Select-Object -First 1
+if ($null -eq $InnerFolder) {
+    Write-Host "Ошибка: В архиве не найдена папка."
+    Remove-Item -Path $TempExtractPath -Recurse -Force
+    exit
+}
+
+Move-Item -Path $InnerFolder.FullName -Destination $ExtractedPath
+Write-Host "Папка $($InnerFolder.Name) перемещена на рабочий стол как $ExtractedPath."
+
+# Очищаем временные файлы
+Remove-Item -Path $TempExtractPath -Recurse -Force
+if (Test-Path $ArchivePath) {
+    Remove-Item -Path $ArchivePath -Force
+    Write-Host "Архив удалён из загрузок."
+}
+
+Write-Host "Скрипт выполнен успешно."
