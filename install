@@ -1,21 +1,21 @@
-# Проверка, запущен ли скрипт от имени администратора
+
 function Test-IsAdmin {
     $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object System.Security.Principal.WindowsPrincipal($currentIdentity)
     return $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# Если не запущено от имени администратора, перезапускаем PowerShell с правами администратора
+
 if (-not (Test-IsAdmin)) {
     Write-Host "Необходимы права администратора. Перезапуск скрипта с правами администратора..." -ForegroundColor Green
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
-# Устанавливаем стратегию обработки ошибок
+
 $ErrorActionPreference = "Stop"
 
-# Завершаем процесс winws, если он работает
+
 try {
     Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue
     Write-Host "Процесс winws завершён." -ForegroundColor Green
@@ -23,7 +23,7 @@ try {
     Write-Host "Процесс winws не был найден." -ForegroundColor Green
 }
 
-# Останавливаем и удаляем службы
+
 $services = @("zapret", "windivert", "windivert14")
 foreach ($service in $services) {
     try {
@@ -41,18 +41,18 @@ foreach ($service in $services) {
     }
 }
 
-### Параметры путей для загрузок и рабочего стола
+
 $DownloadsPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath('UserProfile'), 'Downloads')
 $DesktopPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'))
 
-# Ссылка на архив
+
 $Url = "https://github.com/vayulqq/zapret/releases/download/zapret/zapret_vayul.zip"
 
-# Локальные пути для архива и распакованной папки
+
 $ArchivePath = Join-Path $DownloadsPath "zapret_vayul.zip"
 $ExtractedPath = Join-Path $DesktopPath "zapret_vayul"
 
-# Удаляем старые файлы, если они существуют
+
 if (Test-Path $ArchivePath) {
     Remove-Item -Path $ArchivePath -Force
     Write-Host "Старый архив удалён из загрузок." -ForegroundColor Green
@@ -63,12 +63,12 @@ if (Test-Path $ExtractedPath) {
     Write-Host "Старая папка удалена с рабочего стола." -ForegroundColor Green
 }
 
-# Скачиваем архив
+
 Write-Host "Скачивание архива..." -ForegroundColor Green
 Invoke-WebRequest -Uri $Url -OutFile $ArchivePath
 Write-Host "Архив загружен в папку загрузок." -ForegroundColor Green
 
-# Проверка целостности архива
+
 function Test-ZipFile {
     param ([string]$FilePath)
     try {
@@ -85,11 +85,11 @@ if (-Not (Test-ZipFile -FilePath $ArchivePath)) {
     exit
 }
 
-# Распаковываем архив во временную папку
+
 Write-Host "Распаковка архива..." -ForegroundColor Green
 $TempExtractPath = Join-Path $DownloadsPath "temp_zapret_vayul"
 
-# Удаляем временную папку, если существует
+
 if (Test-Path $TempExtractPath) {
     Remove-Item -Path $TempExtractPath -Recurse -Force
     Write-Host "Старая временная папка temp_zapret_vayul удалена." -ForegroundColor Green
@@ -97,12 +97,12 @@ if (Test-Path $TempExtractPath) {
 
 New-Item -ItemType Directory -Path $TempExtractPath | Out-Null
 
-# Распаковываем архив
+
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $TempExtractPath)
 Write-Host "Архив успешно распакован во временную папку." -ForegroundColor Green
 
-# Находим внутреннюю папку и перемещаем её на рабочий стол
+
 $InnerFolder = Get-ChildItem -Path $TempExtractPath -Directory | Select-Object -First 1
 if ($null -eq $InnerFolder) {
     Write-Host "Ошибка: В архиве не найдена папка." -ForegroundColor Green
@@ -113,7 +113,7 @@ if ($null -eq $InnerFolder) {
 Move-Item -Path $InnerFolder.FullName -Destination $ExtractedPath
 Write-Host "Папка $($InnerFolder.Name) перемещена на рабочий стол как $ExtractedPath." -ForegroundColor Green
 
-# Очищаем временные файлы
+
 Remove-Item -Path $TempExtractPath -Recurse -Force
 if (Test-Path $ArchivePath) {
     Remove-Item -Path $ArchivePath -Force
@@ -121,3 +121,4 @@ if (Test-Path $ArchivePath) {
 }
 
 Write-Host "Скрипт выполнен успешно." -ForegroundColor Green
+pause
