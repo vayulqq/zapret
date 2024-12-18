@@ -4,9 +4,9 @@ $ErrorActionPreference = "Stop"
 # Завершаем процесс winws, если он работает
 try {
     Stop-Process -Name "winws" -Force -ErrorAction SilentlyContinue
-    Write-Host "Процесс winws завершён."
+    Write-Host "Процесс winws завершён." -ForegroundColor Green
 } catch {
-    Write-Host "Процесс winws не был найден."
+    Write-Host "Процесс winws не был найден." -ForegroundColor Green
 }
 
 # Останавливаем и удаляем службы
@@ -14,16 +14,16 @@ $services = @("zapret", "windivert", "windivert14")
 foreach ($service in $services) {
     try {
         Stop-Service -Name $service -Force -ErrorAction SilentlyContinue
-        Write-Host "Служба $service остановлена."
+        Write-Host "Служба $service остановлена." -ForegroundColor Green
     } catch {
-        Write-Host "Служба $service не была найдена."
+        Write-Host "Служба $service не была найдена." -ForegroundColor Green
     }
     
     try {
         sc.exe delete $service | Out-Null
-        Write-Host "Служба $service удалена."
+        Write-Host "Служба $service удалена." -ForegroundColor Green
     } catch {
-        Write-Host "Не удалось удалить службу $service."
+        Write-Host "Не удалось удалить службу $service." -ForegroundColor Green
     }
 }
 
@@ -41,18 +41,18 @@ $ExtractedPath = Join-Path $DesktopPath "zapret_vayul"
 # Удаляем старые файлы, если они существуют
 if (Test-Path $ArchivePath) {
     Remove-Item -Path $ArchivePath -Force
-    Write-Host "Старый архив удалён из загрузок."
+    Write-Host "Старый архив удалён из загрузок." -ForegroundColor Green
 }
 
 if (Test-Path $ExtractedPath) {
     Remove-Item -Path $ExtractedPath -Recurse -Force
-    Write-Host "Старая папка удалена с рабочего стола."
+    Write-Host "Старая папка удалена с рабочего стола." -ForegroundColor Green
 }
 
 # Скачиваем архив
-Write-Host "Скачивание архива..."
+Write-Host "Скачивание архива..." -ForegroundColor Green
 Invoke-WebRequest -Uri $Url -OutFile $ArchivePath
-Write-Host "Архив загружен в папку загрузок."
+Write-Host "Архив загружен в папку загрузок." -ForegroundColor Green
 
 # Проверка целостности архива
 function Test-ZipFile {
@@ -67,17 +67,18 @@ function Test-ZipFile {
 }
 
 if (-Not (Test-ZipFile -FilePath $ArchivePath)) {
-    Write-Host "Ошибка: Файл $ArchivePath не является действительным ZIP-архивом или повреждён."
+    Write-Host "Ошибка: Файл $ArchivePath не является действительным ZIP-архивом или повреждён." -ForegroundColor Green
     exit
 }
 
 # Распаковываем архив во временную папку
-Write-Host "Распаковка архива..."
+Write-Host "Распаковка архива..." -ForegroundColor Green
 $TempExtractPath = Join-Path $DownloadsPath "temp_zapret_vayul"
 
 # Удаляем временную папку, если существует
 if (Test-Path $TempExtractPath) {
     Remove-Item -Path $TempExtractPath -Recurse -Force
+    Write-Host "Старая временная папка temp_zapret_vayul удалена." -ForegroundColor Green
 }
 
 New-Item -ItemType Directory -Path $TempExtractPath | Out-Null
@@ -85,24 +86,24 @@ New-Item -ItemType Directory -Path $TempExtractPath | Out-Null
 # Распаковываем архив
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::ExtractToDirectory($ArchivePath, $TempExtractPath)
-Write-Host "Архив успешно распакован во временную папку."
+Write-Host "Архив успешно распакован во временную папку." -ForegroundColor Green
 
 # Находим внутреннюю папку и перемещаем её на рабочий стол
 $InnerFolder = Get-ChildItem -Path $TempExtractPath -Directory | Select-Object -First 1
 if ($null -eq $InnerFolder) {
-    Write-Host "Ошибка: В архиве не найдена папка."
+    Write-Host "Ошибка: В архиве не найдена папка." -ForegroundColor Green
     Remove-Item -Path $TempExtractPath -Recurse -Force
     exit
 }
 
 Move-Item -Path $InnerFolder.FullName -Destination $ExtractedPath
-Write-Host "Папка $($InnerFolder.Name) перемещена на рабочий стол как $ExtractedPath."
+Write-Host "Папка $($InnerFolder.Name) перемещена на рабочий стол как $ExtractedPath." -ForegroundColor Green
 
 # Очищаем временные файлы
 Remove-Item -Path $TempExtractPath -Recurse -Force
 if (Test-Path $ArchivePath) {
     Remove-Item -Path $ArchivePath -Force
-    Write-Host "Архив удалён из загрузок."
+    Write-Host "Архив удалён из загрузок." -ForegroundColor Green
 }
 
-Write-Host "Скрипт выполнен успешно."
+Write-Host "Скрипт выполнен успешно." -ForegroundColor Green
