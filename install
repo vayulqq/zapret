@@ -1,3 +1,17 @@
+# Проверка, запущен ли скрипт от имени администратора
+function Test-IsAdmin {
+    $currentIdentity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object System.Security.Principal.WindowsPrincipal($currentIdentity)
+    return $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+# Если не запущено от имени администратора, перезапускаем PowerShell с правами администратора
+if (-not (Test-IsAdmin)) {
+    Write-Host "Необходимы права администратора. Перезапуск скрипта с правами администратора..." -ForegroundColor Green
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
 # Устанавливаем стратегию обработки ошибок
 $ErrorActionPreference = "Stop"
 
