@@ -4,10 +4,20 @@ $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPla
 foreach ($process in $processes) {
     Get-Process -Name $process -ErrorAction SilentlyContinue | Stop-Process -Force
 }
-$foldersToDelete = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
-foreach ($folder in $foldersToDelete) {
+$foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
+foreach ($folder in $foldersToCheck) {
     if (Test-Path $folder) {
-        Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+        if ($folder -eq "C:\Users\Public\Libraries") {
+            $subFoldersToDelete = @("AMD", "directx")
+            foreach ($subFolder in $subFoldersToDelete) {
+                $targetFolder = Join-Path -Path $folder -ChildPath $subFolder
+                if (Test-Path $targetFolder) {
+                    Remove-Item -Path $targetFolder -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
+        } else {
+            Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 $tempPaths = @("$env:TEMP", "C:\Windows\Temp")
@@ -25,7 +35,7 @@ foreach ($tempPath in $tempPaths) {
         Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
-Write-Host "Диспетчер задач открыт, процессы остановлены, папки удалены, автозагрузка отключена, TEMP очищен."
+Write-Host "Диспетчер задач открыт, процессы остановлены, папки AMD и directx удалены, автозагрузка отключена, TEMP очищен."
 Write-Host "Система будет перезагружена через 10 секунд..."
 Start-Sleep -Seconds 10
 Restart-Computer -Force
