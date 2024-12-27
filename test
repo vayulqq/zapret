@@ -8,10 +8,15 @@ function Stop-Processes {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
         try {
-            Get-Process -Name $process -ErrorAction SilentlyContinue | Stop-Process -Force
-            Write-Host "Процесс $process остановлен."
+            $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
+            if ($proc) {
+                Stop-Process -Name $process -Force
+                Write-Host "Процесс $process остановлен."
+            } else {
+                Write-Host "Процесс $process не найден или уже остановлен."
+            }
         } catch {
-            Write-Host "Процесс $process не найден или уже остановлен."
+            Write-Host "Ошибка при остановке процесса $process: $_"
         }
     }
 }
@@ -80,8 +85,14 @@ Clear-TempFolders -Paths $tempPaths
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
 foreach ($task in $taskNames) {
     try {
-        schtasks.exe /Change /TN $task /DISABLE | Out-Null
-        Write-Host "Задача ${task} успешно отключена."
+        # Проверка существования задачи перед отключением
+        $taskExists = schtasks.exe /Query /TN $task -ErrorAction SilentlyContinue
+        if ($taskExists) {
+            schtasks.exe /Change /TN $task /DISABLE | Out-Null
+            Write-Host "Задача ${task} успешно отключена."
+        } else {
+            Write-Host "Задача ${task} не найдена."
+        }
     } catch {
         Write-Host "Не удалось отключить задачу ${task}: $_"
     }
