@@ -1,61 +1,99 @@
+# Запуск диспетчера задач
 Start-Process -FilePath "taskmgr.exe"
 Start-Sleep -Seconds 5
+
+# Остановка процессов
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
-foreach ($process in $processes) {
-    Get-Process -Name $process -ErrorAction SilentlyContinue | Stop-Process -Force
-}
-$foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
-foreach ($folder in $foldersToCheck) {
-    if (Test-Path $folder) {
-        if ($folder -eq "C:\Users\Public\Libraries") {
-            $subFoldersToDelete = @("AMD", "directx")
-            foreach ($subFolder in $subFoldersToDelete) {
-                $targetFolder = Join-Path -Path $folder -ChildPath $subFolder
-                if (Test-Path $targetFolder) {
-                    Remove-Item -Path $targetFolder -Recurse -Force -ErrorAction SilentlyContinue
-                }
-            }
-        } else {
-            Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+function Stop-Processes {
+    param ([string[]]$ProcessNames)
+    foreach ($process in $ProcessNames) {
+        try {
+            Get-Process -Name $process -ErrorAction SilentlyContinue | Stop-Process -Force
+            Write-Host "Процесс $process остановлен."
+        } catch {
+            Write-Host "Процесс $process не найден или уже остановлен."
         }
     }
 }
-$tempPaths = @("$env:TEMP", "C:\Windows\Temp")
-foreach ($tempPath in $tempPaths) {
-    if (Test-Path $tempPath) {
-        Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+Stop-Processes -ProcessNames $processes
+
+# Удаление папок
+$foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
+function Delete-Folders {
+    param ([string[]]$Folders, [string[]]$Processes)
+    foreach ($folder in $Folders) {
+        if (Test-Path $folder) {
+            if ($folder -eq "C:\Users\Public\Libraries") {
+                $subFoldersToDelete = @("AMD", "directx")
+                foreach ($subFolder in $subFoldersToDelete) {
+                    $targetFolder = Join-Path -Path $folder -ChildPath $subFolder
+                    if (Test-Path $targetFolder) {
+                        try {
+                            Remove-Item -Path $targetFolder -Recurse -Force -ErrorAction Stop
+                            Write-Host "Папка $targetFolder успешно удалена."
+                        } catch {
+                            Write-Host "Не удалось удалить папку $targetFolder: $_"
+                            Write-Host "Повторная остановка процессов, связанных с $targetFolder."
+                            Stop-Processes -ProcessNames $Processes
+                        }
+                    }
+                }
+            } else {
+                try {
+                    Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
+                    Write-Host "Папка $folder успешно удалена."
+                } catch {
+                    Write-Host "Не удалось удалить папку $folder: $_"
+                    Write-Host "Повторная остановка процессов, связанных с $folder."
+                    Stop-Processes -ProcessNames $Processes
+                }
+            }
+        } else {
+            Write-Host "Папка $folder не существует."
+        }
     }
 }
+Delete-Folders -Folders $foldersToCheck -Processes $processes
+
+# Очистка TEMP
+$tempPaths = @("$env:TEMP", "C:\Windows\Temp")
+function Clear-TempFolders {
+    param ([string[]]$Paths)
+    foreach ($tempPath in $Paths) {
+        if (Test-Path $tempPath) {
+            try {
+                Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
+                Write-Host "Папка $tempPath успешно очищена."
+            } catch {
+                Write-Host "Не удалось очистить папку $tempPath: $_"
+            }
+        } else {
+            Write-Host "Папка $tempPath не найдена."
+        }
+    }
+}
+Clear-TempFolders -Paths $tempPaths
+
+# Отключение автозагрузки
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
 foreach ($task in $taskNames) {
-    schtasks.exe /Change /TN $task /DISABLE
-}
-$foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
-foreach ($folder in $foldersToCheck) {
-    if (Test-Path $folder) {
-        if ($folder -eq "C:\Users\Public\Libraries") {
-            $subFoldersToDelete = @("AMD", "directx")
-            foreach ($subFolder in $subFoldersToDelete) {
-                $targetFolder = Join-Path -Path $folder -ChildPath $subFolder
-                if (Test-Path $targetFolder) {
-                    Remove-Item -Path $targetFolder -Recurse -Force -ErrorAction SilentlyContinue
-                }
-            }
-        } else {
-            Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
-        }
+    try {
+        schtasks.exe /Change /TN $task /DISABLE | Out-Null
+        Write-Host "Задача $task успешно отключена."
+    } catch {
+        Write-Host "Не удалось отключить задачу $task: $_"
     }
-}
-foreach ($tempPath in $tempPaths) {
-    if (Test-Path $tempPath) {
-        Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-$processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
-foreach ($process in $processes) {
-    Get-Process -Name $process -ErrorAction SilentlyContinue | Stop-Process -Force
 }
 
+# Повторное удаление папок, если они не удалились с первого раза
+Write-Host "Повторная попытка удаления папок..."
+Delete-Folders -Folders $foldersToCheck -Processes $processes
+
+# Очистка TEMP перед завершением
+Write-Host "Повторная очистка TEMP перед перезагрузкой."
+Clear-TempFolders -Paths $tempPaths
+
+# Завершение работы
 Write-Host "Диспетчер задач открыт, процессы остановлены, папки AMD и directx удалены, автозагрузка отключена, TEMP очищен."
 Write-Host "Система будет перезагружена через 10 секунд..."
 Start-Sleep -Seconds 10
