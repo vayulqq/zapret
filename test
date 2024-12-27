@@ -1,0 +1,31 @@
+Start-Process -FilePath "taskmgr.exe"
+Start-Sleep -Seconds 5
+$processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
+foreach ($process in $processes) {
+    Get-Process -Name $process -ErrorAction SilentlyContinue | Stop-Process -Force
+}
+$foldersToDelete = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
+foreach ($folder in $foldersToDelete) {
+    if (Test-Path $folder) {
+        Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+$tempPaths = @("$env:TEMP", "C:\Windows\Temp")
+foreach ($tempPath in $tempPaths) {
+    if (Test-Path $tempPath) {
+        Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
+foreach ($task in $taskNames) {
+    schtasks.exe /Change /TN $task /DISABLE
+}
+foreach ($tempPath in $tempPaths) {
+    if (Test-Path $tempPath) {
+        Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+Write-Host "Диспетчер задач открыт, процессы остановлены, папки удалены, автозагрузка отключена, TEMP очищен."
+Write-Host "Система будет перезагружена через 10 секунд..."
+Start-Sleep -Seconds 10
+Restart-Computer -Force
