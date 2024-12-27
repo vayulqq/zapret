@@ -31,14 +31,14 @@ function Delete-Folders {
         if (Test-Path $folder) {
             try {
                 Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
-                Write-Host "Папка ${folder} успешно удалена."
+                Write-Host "Папка $folder успешно удалена."
             } catch {
-                Write-Host "Не удалось удалить папку ${folder}: $_"
-                Write-Host "Повторная остановка процессов, связанных с ${folder}."
+                Write-Host "Не удалось удалить папку $folder: $_"
+                Write-Host "Повторная остановка процессов, связанных с $folder."
                 Stop-Processes -ProcessNames $Processes
             }
         } else {
-            Write-Host "Папка ${folder} не существует."
+            Write-Host "Папка $folder не существует."
         }
     }
 }
@@ -48,14 +48,14 @@ function Delete-Files {
         if (Test-Path $file) {
             try {
                 Remove-Item -Path $file -Force -ErrorAction Stop
-                Write-Host "Файл ${file} успешно удалён."
+                Write-Host "Файл $file успешно удалён."
             } catch {
-                Write-Host "Не удалось удалить файл ${file}: $_"
-                Write-Host "Повторная остановка процессов, связанных с ${file}."
+                Write-Host "Не удалось удалить файл $file: $_"
+                Write-Host "Повторная остановка процессов, связанных с $file."
                 Stop-Processes -ProcessNames $Processes
             }
         } else {
-            Write-Host "Файл ${file} не существует."
+            Write-Host "Файл $file не существует."
         }
     }
 }
@@ -70,12 +70,12 @@ function Clear-TempFolders {
         if (Test-Path $tempPath) {
             try {
                 Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
-                Write-Host "Папка ${tempPath} успешно очищена."
+                Write-Host "Папка $tempPath успешно очищена."
             } catch {
-                Write-Host "Не удалось очистить папку ${tempPath}: $_"
+                Write-Host "Не удалось очистить папку $tempPath: $_"
             }
         } else {
-            Write-Host "Папка ${tempPath} не найдена."
+            Write-Host "Папка $tempPath не найдена."
         }
     }
 }
@@ -89,12 +89,12 @@ foreach ($task in $taskNames) {
         $taskExists = schtasks.exe /Query /TN $task -ErrorAction SilentlyContinue
         if ($taskExists) {
             schtasks.exe /Change /TN $task /DISABLE | Out-Null
-            Write-Host "Задача ${task} успешно отключена."
+            Write-Host "Задача $task успешно отключена."
         } else {
-            Write-Host "Задача ${task} не найдена."
+            Write-Host "Задача $task не найдена."
         }
     } catch {
-        Write-Host "Не удалось отключить задачу ${task}: $_"
+        Write-Host "Не удалось отключить задачу $task: $_"
     }
 }
 
