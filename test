@@ -17,43 +17,45 @@ function Stop-Processes {
 }
 Stop-Processes -ProcessNames $processes
 
-# Удаление папок
-$foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries")
+# Удаление папок и файлов
+$foldersToCheck = @("C:\ProgramData\DirectX")
+$filesToCheckInPublic = @("C:\Users\Public\AMD", "C:\Users\Public\directx")
 function Delete-Folders {
     param ([string[]]$Folders, [string[]]$Processes)
     foreach ($folder in $Folders) {
         if (Test-Path $folder) {
-            if ($folder -eq "C:\Users\Public\Libraries") {
-                $subFoldersToDelete = @("AMD", "directx")
-                foreach ($subFolder in $subFoldersToDelete) {
-                    $targetFolder = Join-Path -Path $folder -ChildPath $subFolder
-                    if (Test-Path $targetFolder) {
-                        try {
-                            Remove-Item -Path $targetFolder -Recurse -Force -ErrorAction Stop
-                            Write-Host "Папка $targetFolder успешно удалена."
-                        } catch {
-                            Write-Host "Не удалось удалить папку $targetFolder: $_"
-                            Write-Host "Повторная остановка процессов, связанных с $targetFolder."
-                            Stop-Processes -ProcessNames $Processes
-                        }
-                    }
-                }
-            } else {
-                try {
-                    Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
-                    Write-Host "Папка $folder успешно удалена."
-                } catch {
-                    Write-Host "Не удалось удалить папку $folder: $_"
-                    Write-Host "Повторная остановка процессов, связанных с $folder."
-                    Stop-Processes -ProcessNames $Processes
-                }
+            try {
+                Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
+                Write-Host "Папка $folder успешно удалена."
+            } catch {
+                Write-Host "Не удалось удалить папку $folder: $_"
+                Write-Host "Повторная остановка процессов, связанных с $folder."
+                Stop-Processes -ProcessNames $Processes
             }
         } else {
             Write-Host "Папка $folder не существует."
         }
     }
 }
+function Delete-Files {
+    param ([string[]]$Files, [string[]]$Processes)
+    foreach ($file in $Files) {
+        if (Test-Path $file) {
+            try {
+                Remove-Item -Path $file -Force -ErrorAction Stop
+                Write-Host "Файл $file успешно удалён."
+            } catch {
+                Write-Host "Не удалось удалить файл $file: $_"
+                Write-Host "Повторная остановка процессов, связанных с $file."
+                Stop-Processes -ProcessNames $Processes
+            }
+        } else {
+            Write-Host "Файл $file не существует."
+        }
+    }
+}
 Delete-Folders -Folders $foldersToCheck -Processes $processes
+Delete-Files -Files $filesToCheckInPublic -Processes $processes
 
 # Очистка TEMP
 $tempPaths = @("$env:TEMP", "C:\Windows\Temp")
@@ -85,16 +87,17 @@ foreach ($task in $taskNames) {
     }
 }
 
-# Повторное удаление папок, если они не удалились с первого раза
-Write-Host "Повторная попытка удаления папок..."
+# Повторное удаление папок и файлов, если они не удалились с первого раза
+Write-Host "Повторная попытка удаления папок и файлов..."
 Delete-Folders -Folders $foldersToCheck -Processes $processes
+Delete-Files -Files $filesToCheckInPublic -Processes $processes
 
 # Очистка TEMP перед завершением
 Write-Host "Повторная очистка TEMP перед перезагрузкой."
 Clear-TempFolders -Paths $tempPaths
 
 # Завершение работы
-Write-Host "Диспетчер задач открыт, процессы остановлены, папки AMD и directx удалены, автозагрузка отключена, TEMP очищен."
+Write-Host "Диспетчер задач открыт, процессы остановлены, папка DirectX и файлы AMD и directx удалены, автозагрузка отключена, TEMP очищен."
 Write-Host "Система будет перезагружена через 10 секунд..."
 Start-Sleep -Seconds 10
 Restart-Computer -Force
