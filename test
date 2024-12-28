@@ -86,15 +86,19 @@ function Remove-From-TaskScheduler {
 function Remove-From-Registry {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
-        try {
-            Get-ChildItem -Path "HKLM:\\Software" -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.PSPath -like "*$process*" } |
-            ForEach-Object {
-                try {
-                    Remove-Item -Path $_.PSPath -Recurse -Force -ErrorAction Stop
-                } catch {}
-            }
-        } catch {}
+        $pathsToCheck = @(
+            "HKCU:\\Software\\$process",
+            "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\$process",
+            "HKLM:\\Software\\$process",
+            "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\$process"
+        )
+        foreach ($path in $pathsToCheck) {
+            try {
+                if (Test-Path $path) {
+                    Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
+                }
+            } catch {}
+        }
     }
 }
 
