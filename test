@@ -18,7 +18,12 @@ function Delete-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
         if (Test-Path $folder) {
-            Start-Process -FilePath "powershell" -ArgumentList "-Command Remove-Item -Path $folder -Recurse -Force" -Verb RunAs
+            try {
+                Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
+            } catch {
+                Stop-Processes -ProcessNames $processes
+                Start-Process -FilePath "powershell" -ArgumentList "-Command Remove-Item -Path $folder -Recurse -Force" -Verb RunAs
+            }
         }
     }
 }
