@@ -43,16 +43,7 @@ function Clean-Folders {
                         } else {
                             Remove-Item -Path $_.FullName -Force -ErrorAction Stop
                         }
-                    } catch {
-                        Start-Sleep -Milliseconds 100
-                        try {
-                            if ($_.PSIsContainer) {
-                                Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
-                            } else {
-                                Remove-Item -Path $_.FullName -Force -ErrorAction Stop
-                            }
-                        } catch {}
-                    }
+                    } catch {}
                 }
             } catch {}
         }
@@ -79,7 +70,10 @@ function Remove-From-TaskScheduler {
         try {
             schtasks.exe /Query /TN $task | Out-Null
             schtasks.exe /Delete /TN $task /F | Out-Null
-        } catch {}
+        } catch {
+            # Логика проверки и удаления вручную, если задача имеет вложенные подпути
+            Get-ScheduledTask | Where-Object { $_.TaskName -like "*$task*" } | Unregister-ScheduledTask -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
