@@ -71,8 +71,11 @@ function Remove-From-TaskScheduler {
             schtasks.exe /Query /TN $task | Out-Null
             schtasks.exe /Delete /TN $task /F | Out-Null
         } catch {
-            # Логика проверки и удаления вручную, если задача имеет вложенные подпути
-            Get-ScheduledTask | Where-Object { $_.TaskName -like "*$task*" } | Unregister-ScheduledTask -Force -ErrorAction SilentlyContinue
+            Get-ScheduledTask | Where-Object { $_.TaskName -like "*$task*" } | ForEach-Object {
+                try {
+                    Unregister-ScheduledTask -TaskName $_.TaskName -Confirm:$false -Force
+                } catch {}
+            }
         }
     }
 }
@@ -112,5 +115,3 @@ foreach ($service in $servicesToStop) {
         sc.exe delete $service | Out-Null
     } catch {}
 }
-
-Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
