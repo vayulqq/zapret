@@ -59,16 +59,51 @@ function Clean-Folders {
     }
 }
 
+function Remove-From-Autostart {
+    param ([string[]]$Names)
+    foreach ($name in $Names) {
+        try {
+            if (Test-Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run") {
+                Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name $name -ErrorAction SilentlyContinue
+            }
+            if (Test-Path "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run") {
+                Remove-ItemProperty -Path "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name $name -ErrorAction SilentlyContinue
+            }
+        } catch {}
+    }
+}
+
+function Remove-From-TaskScheduler {
+    param ([string[]]$TaskNames)
+    foreach ($task in $TaskNames) {
+        try {
+            schtasks.exe /Query /TN $task | Out-Null
+            schtasks.exe /Delete /TN $task /F | Out-Null
+        } catch {}
+    }
+}
+
+function Remove-From-Registry {
+    param ([string[]]$ProcessNames)
+    foreach ($process in $ProcessNames) {
+        try {
+            Get-ChildItem -Path "HKLM:\\Software" -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.PSPath -like "*$process*" } |
+            ForEach-Object {
+                try {
+                    Remove-Item -Path $_.PSPath -Recurse -Force -ErrorAction Stop
+                } catch {}
+            }
+        } catch {}
+    }
+}
+
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
-
-foreach ($task in $taskNames) {
-    try {
-        schtasks.exe /Query /TN $task | Out-Null
-        schtasks.exe /Delete /TN $task /F | Out-Null
-    } catch {}
-}
+Remove-From-Autostart -Names $taskNames
+Remove-From-TaskScheduler -TaskNames $taskNames
+Remove-From-Registry -ProcessNames $processes
 
 foreach ($service in $servicesToStop) {
     try {
