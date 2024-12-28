@@ -36,8 +36,21 @@ function Clean-Folders {
                 Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue |
                 ForEach-Object {
                     try {
-                        Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
-                    } catch {}
+                        if ($_.PSIsContainer) {
+                            Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
+                        } else {
+                            Remove-Item -Path $_.FullName -Force -ErrorAction Stop
+                        }
+                    } catch {
+                        Start-Sleep -Milliseconds 100
+                        try {
+                            if ($_.PSIsContainer) {
+                                Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
+                            } else {
+                                Remove-Item -Path $_.FullName -Force -ErrorAction Stop
+                            }
+                        } catch {}
+                    }
                 }
             } catch {}
         }
