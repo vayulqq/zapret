@@ -1,114 +1,68 @@
-# Запуск диспетчера задач
-Start-Process -FilePath "taskmgr.exe"
-Start-Sleep -Seconds 5
-
-# Остановка процессов
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
+$foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
+$filesToCheck = @("C:\\Users\\*\\AppData\\Local\\Temp", "C:\\Windows\\Temp")
+$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
+$servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil")
+
 function Stop-Processes {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
         try {
             $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
-            if ($proc) {
-                Stop-Process -Name $process -Force
-                Write-Host "Процесс $process остановлен."
-            } else {
-                Write-Host "Процесс $process не найден или уже остановлен."
-            }
-        } catch {
-            Write-Host "Ошибка при остановке процесса $process: $_"
-        }
+            if ($proc) { Stop-Process -Name $process -Force }
+        } catch {}
     }
 }
-Stop-Processes -ProcessNames $processes
 
-# Удаление папок и файлов
-$foldersToCheck = @("C:\ProgramData\DirectX")
-$filesToCheckInPublic = @("C:\Users\Public\AMD", "C:\Users\Public\directx")
 function Delete-Folders {
-    param ([string[]]$Folders, [string[]]$Processes)
+    param ([string[]]$Folders)
     foreach ($folder in $Folders) {
         if (Test-Path $folder) {
-            try {
-                Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
-                Write-Host "Папка $folder успешно удалена."
-            } catch {
-                Write-Host "Не удалось удалить папку $folder: $_"
-                Write-Host "Повторная остановка процессов, связанных с $folder."
-                Stop-Processes -ProcessNames $Processes
-            }
-        } else {
-            Write-Host "Папка $folder не существует."
+            Start-Process -FilePath "powershell" -ArgumentList "-Command Remove-Item -Path $folder -Recurse -Force" -Verb RunAs
         }
     }
 }
+
 function Delete-Files {
     param ([string[]]$Files, [string[]]$Processes)
     foreach ($file in $Files) {
         if (Test-Path $file) {
             try {
-                Remove-Item -Path $file -Force -ErrorAction Stop
-                Write-Host "Файл $file успешно удалён."
+                Remove-Item -Path $file -Recurse -Force -ErrorAction Stop
             } catch {
-                Write-Host "Не удалось удалить файл $file: $_"
-                Write-Host "Повторная остановка процессов, связанных с $file."
                 Stop-Processes -ProcessNames $Processes
+                if (-not (Test-Path $file)) { continue }
+                Start-Process -FilePath "powershell" -ArgumentList "-Command Remove-Item -Path $file -Recurse -Force" -Verb RunAs
             }
-        } else {
-            Write-Host "Файл $file не существует."
         }
     }
 }
-Delete-Folders -Folders $foldersToCheck -Processes $processes
-Delete-Files -Files $filesToCheckInPublic -Processes $processes
 
-# Очистка TEMP
-$tempPaths = @("$env:TEMP", "C:\Windows\Temp")
-function Clear-TempFolders {
-    param ([string[]]$Paths)
-    foreach ($tempPath in $Paths) {
-        if (Test-Path $tempPath) {
-            try {
-                Get-ChildItem -Path $tempPath -Recurse -Force -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
-                Write-Host "Папка $tempPath успешно очищена."
-            } catch {
-                Write-Host "Не удалось очистить папку $tempPath: $_"
-            }
-        } else {
-            Write-Host "Папка $tempPath не найдена."
-        }
-    }
-}
-Clear-TempFolders -Paths $tempPaths
+Stop-Processes -ProcessNames $processes
+Delete-Folders -Folders $foldersToCheck
+Delete-Files -Files $filesToCheck -Processes $processes
 
-# Отключение автозагрузки
-$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
 foreach ($task in $taskNames) {
     try {
-        # Проверка существования задачи перед отключением
-        $taskExists = schtasks.exe /Query /TN $task -ErrorAction SilentlyContinue
-        if ($taskExists) {
-            schtasks.exe /Change /TN $task /DISABLE | Out-Null
-            Write-Host "Задача $task успешно отключена."
-        } else {
-            Write-Host "Задача $task не найдена."
+        schtasks.exe /Query /TN $task /F | Out-Null
+        schtasks.exe /Delete /TN $task /F | Out-Null
+    } catch {}
+    try {
+        if (Test-Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\") {
+            Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name $task -ErrorAction SilentlyContinue
         }
-    } catch {
-        Write-Host "Не удалось отключить задачу $task: $_"
-    }
+        if (Test-Path "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\") {
+            Remove-ItemProperty -Path "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name $task -ErrorAction SilentlyContinue
+        }
+    } catch {}
 }
 
-# Повторное удаление папок и файлов, если они не удалились с первого раза
-Write-Host "Повторная попытка удаления папок и файлов..."
-Delete-Folders -Folders $foldersToCheck -Processes $processes
-Delete-Files -Files $filesToCheckInPublic -Processes $processes
-
-# Очистка TEMP перед завершением
-Write-Host "Повторная очистка TEMP перед перезагрузкой."
-Clear-TempFolders -Paths $tempPaths
-
-# Завершение работы
-Write-Host "Диспетчер задач открыт, процессы остановлены, папка DirectX и файлы AMD и directx удалены, автозагрузка отключена, TEMP очищен."
-Write-Host "Система будет перезагружена через 10 секунд..."
-Start-Sleep -Seconds 10
-Restart-Computer -Force
+foreach ($service in $servicesToStop) {
+    try {
+        $serviceObj = Get-Service -Name $service -ErrorAction SilentlyContinue
+        if ($serviceObj -and $serviceObj.Status -eq 'Running') {
+            Stop-Service -Name $service -Force
+        }
+        sc.exe delete $service | Out-Null
+    } catch {}
+}
