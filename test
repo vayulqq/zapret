@@ -1,6 +1,6 @@
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
-$tempFoldersToClean = @("C:\\Users\\*\\AppData\\Local\\Temp", "C:\\Windows\\Temp")
+$tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
 $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil")
 
@@ -31,15 +31,15 @@ function Delete-Folders {
 function Clean-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
-        $expandedFolders = Get-Item -Path $folder -ErrorAction SilentlyContinue
-        foreach ($expandedFolder in $expandedFolders) {
-            if (Test-Path $expandedFolder.FullName) {
-                try {
-                    Get-ChildItem -Path $expandedFolder.FullName -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction Stop
-                } catch {
-                    Write-Host "Failed to delete some items in $($expandedFolder.FullName). Skipping those files."
+        if (Test-Path $folder) {
+            try {
+                Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue |
+                ForEach-Object {
+                    try {
+                        Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
+                    } catch {}
                 }
-            }
+            } catch {}
         }
     }
 }
@@ -51,13 +51,9 @@ Clean-Folders -Folders $tempFoldersToClean
 
 foreach ($task in $taskNames) {
     try {
-        # Проверяем существование задачи
         schtasks.exe /Query /TN $task | Out-Null
-        # Удаляем задачу
         schtasks.exe /Delete /TN $task /F | Out-Null
-    } catch {
-        Write-Host "Task $task not found or could not be deleted."
-    }
+    } catch {}
 }
 
 foreach ($service in $servicesToStop) {
