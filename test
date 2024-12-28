@@ -1,6 +1,6 @@
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
-$filesToCheck = @("C:\\Users\\*\\AppData\\Local\\Temp", "C:\\Windows\\Temp")
+$tempFoldersToClean = @("C:\\Users\\*\\AppData\\Local\\Temp", "C:\\Windows\\Temp")
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
 $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil")
 
@@ -28,16 +28,17 @@ function Delete-Folders {
     }
 }
 
-function Delete-Files {
-    param ([string[]]$Files, [string[]]$Processes)
-    foreach ($file in $Files) {
-        if (Test-Path $file) {
-            try {
-                Remove-Item -Path $file -Recurse -Force -ErrorAction Stop
-            } catch {
-                Stop-Processes -ProcessNames $Processes
-                if (-not (Test-Path $file)) { continue }
-                Start-Process -FilePath "powershell" -ArgumentList "-Command Remove-Item -Path $file -Recurse -Force" -Verb RunAs
+function Clean-Folders {
+    param ([string[]]$Folders)
+    foreach ($folder in $Folders) {
+        $expandedFolders = Get-Item -Path $folder -ErrorAction SilentlyContinue
+        foreach ($expandedFolder in $expandedFolders) {
+            if (Test-Path $expandedFolder.FullName) {
+                try {
+                    Get-ChildItem -Path $expandedFolder.FullName -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction Stop
+                } catch {
+                    Write-Host "Failed to delete some items in $($expandedFolder.FullName). Skipping those files."
+                }
             }
         }
     }
@@ -46,7 +47,7 @@ function Delete-Files {
 Start-Process -FilePath "taskmgr.exe" -Verb RunAs
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
-Delete-Files -Files $filesToCheck -Processes $processes
+Clean-Folders -Folders $tempFoldersToClean
 
 foreach ($task in $taskNames) {
     try {
