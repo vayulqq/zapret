@@ -51,17 +51,13 @@ Clean-Folders -Folders $tempFoldersToClean
 
 foreach ($task in $taskNames) {
     try {
-        schtasks.exe /Query /TN $task /F | Out-Null
+        # Проверяем существование задачи
+        schtasks.exe /Query /TN $task | Out-Null
+        # Удаляем задачу
         schtasks.exe /Delete /TN $task /F | Out-Null
-    } catch {}
-    try {
-        if (Test-Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\") {
-            Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name $task -ErrorAction SilentlyContinue
-        }
-        if (Test-Path "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\") {
-            Remove-ItemProperty -Path "HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name $task -ErrorAction SilentlyContinue
-        }
-    } catch {}
+    } catch {
+        Write-Host "Task $task not found or could not be deleted."
+    }
 }
 
 foreach ($service in $servicesToStop) {
