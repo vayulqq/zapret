@@ -1,3 +1,5 @@
+Start-Process -FilePath "taskmgr.exe" -Verb RunAs
+
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
 $tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
@@ -57,7 +59,6 @@ function Clean-Folders {
     }
 }
 
-Start-Process -FilePath "taskmgr.exe" -Verb RunAs
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
