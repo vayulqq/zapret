@@ -38,6 +38,7 @@ function Delete-Files {
     }
 }
 
+Start-Process -FilePath "taskmgr.exe" -Verb RunAs
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
 Delete-Files -Files $filesToCheck -Processes $processes
@@ -66,3 +67,5 @@ foreach ($service in $servicesToStop) {
         sc.exe delete $service | Out-Null
     } catch {}
 }
+
+Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
