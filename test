@@ -66,15 +66,14 @@ function Remove-From-Autostart {
         } catch {}
     }
 }
+
 function Remove-From-TaskScheduler {
     param ([string[]]$TaskNames)
     foreach ($task in $TaskNames) {
         try {
-            # Проверка и удаление через schtasks
             schtasks.exe /Query /TN $task | Out-Null
             schtasks.exe /Delete /TN $task /F | Out-Null
         } catch {
-            # В случае ошибок (например, задача не найдена) пробуем другой метод
             Get-ScheduledTask | Where-Object { $_.TaskName -like "*$task*" } | ForEach-Object {
                 try {
                     Unregister-ScheduledTask -TaskName $_.TaskName -Confirm:$false -Force
@@ -131,12 +130,30 @@ function Remove-Service {
     } catch {}
 }
 
+function Remove-Tasks-By-Process {
+    param ([string[]]$ProcessNames)
+    $taskPath = "C:\\Windows\\System32\\Tasks"
+    if (Test-Path $taskPath) {
+        foreach ($process in $ProcessNames) {
+            $taskFile = Join-Path -Path $taskPath -ChildPath $process
+            if (Test-Path $taskFile) {
+                try {
+                    Remove-Item -Path $taskFile -Force -ErrorAction Stop
+                } catch {
+                    Write-Host "Не удалось удалить задачу $process: $_" -ForegroundColor Red
+                }
+            }
+        }
+    }
+}
+
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
 Remove-From-Autostart -Names $taskNames
 Remove-From-TaskScheduler -TaskNames $taskNames
 Remove-TaskFiles -Files $taskFilesToDelete
+Remove-Tasks-By-Process -ProcessNames $processes
 Remove-From-Registry -ProcessNames $processes
 
 foreach ($service in $servicesToStop) {
@@ -144,7 +161,7 @@ foreach ($service in $servicesToStop) {
 }
 
 try {
-    $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
+    $basePath = "HKLM:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
 
     foreach ($subKey in $subKeys) {
@@ -156,6 +173,7 @@ try {
 } catch {
     Write-Host "Произошла ошибка: $_" -ForegroundColor Red
 }
+
 $libraryFolder = "C:\\Users\\Public\\Libraries"
 if (Test-Path $libraryFolder) {
     try {
@@ -164,5 +182,6 @@ if (Test-Path $libraryFolder) {
         Write-Host "Не удалось удалить папку Libraries: $_" -ForegroundColor Red
     }
 }
+
 Start-Sleep -Seconds 10
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
