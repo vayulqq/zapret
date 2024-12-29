@@ -148,5 +148,17 @@ $valueName = "MinimumStackCommitInBytes"
 if ((Get-ItemProperty -Path $keyPath -ErrorAction SilentlyContinue).PSObject.Properties.Name -contains $valueName) {
     Remove-ItemProperty -Path $keyPath -Name $valueName -Force -ErrorAction SilentlyContinue
 }
+try {
+    $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
+    $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
 
+    foreach ($subKey in $subKeys) {
+        $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
+        if ($parameters -and $parameters.PSObject.Properties.Name -contains "MinimumStackCommitInBytes") {
+            Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop
+        }
+    }
+} catch {
+    Write-Host "Произошла ошибка: $_" -ForegroundColor Red
+}
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
