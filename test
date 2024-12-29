@@ -41,7 +41,7 @@ $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPla
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
 $tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
-$servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc")
+$servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc", "zapret", "zapret DPI bypass")
 $taskFilesToDelete = @("C:\\Windows\\System32\\Tasks\\DirectXUtilTask", "C:\\Windows\\System32\\Tasks\\WinAMDTweak")
 function Stop-Processes {
     param ([string[]]$ProcessNames)
