@@ -1,3 +1,4 @@
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 function Check-SafeMode {
     $safeModeKey = "HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Option"
     try {
@@ -36,7 +37,6 @@ if (-not $isAdmin) {
     return
 }
 Write-Host "Все проверки пройдены. Скрипт работает в безопасном режиме и под правами администратора." -ForegroundColor Green
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
 $tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
