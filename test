@@ -7,7 +7,6 @@ $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "direc
 $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc")
 $taskFilesToDelete = @("C:\\Windows\\System32\\Tasks\\DirectXUtilTask", "C:\\Windows\\System32\\Tasks\\WinAMDTweak")
 
-# Функция для остановки процессов
 function Stop-Processes {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
@@ -18,7 +17,6 @@ function Stop-Processes {
     }
 }
 
-# Удаление папок
 function Delete-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
@@ -33,7 +31,6 @@ function Delete-Folders {
     }
 }
 
-# Очищение папок
 function Clean-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
@@ -54,7 +51,6 @@ function Clean-Folders {
     }
 }
 
-# Удаление из автозагрузки
 function Remove-From-Autostart {
     param ([string[]]$Names)
     foreach ($name in $Names) {
@@ -68,8 +64,6 @@ function Remove-From-Autostart {
         } catch {}
     }
 }
-
-# Удаление задач из планировщика
 function Remove-From-TaskScheduler {
     param ([string[]]$TaskNames)
     foreach ($task in $TaskNames) {
@@ -88,7 +82,6 @@ function Remove-From-TaskScheduler {
     }
 }
 
-# Удаление файлов задач
 function Remove-TaskFiles {
     param ([string[]]$Files)
     foreach ($file in $Files) {
@@ -106,7 +99,6 @@ function Remove-TaskFiles {
     }
 }
 
-# Удаление записей из реестра
 function Remove-From-Registry {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
@@ -126,7 +118,6 @@ function Remove-From-Registry {
     }
 }
 
-# Удаление сервисов
 function Remove-Service {
     param ([string]$ServiceName)
     try {
@@ -150,14 +141,6 @@ foreach ($service in $servicesToStop) {
     Remove-Service -ServiceName $service
 }
 
-Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\regedit.exe" -Force -ErrorAction SilentlyContinue
-
-$keyPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\SubSystems"
-$valueName = "MinimumStackCommitInBytes"
-
-if ((Get-ItemProperty -Path $keyPath -ErrorAction SilentlyContinue).PSObject.Properties.Name -contains $valueName) {
-    Remove-ItemProperty -Path $keyPath -Name $valueName -Force -ErrorAction SilentlyContinue
-}
 try {
     $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
@@ -171,8 +154,6 @@ try {
 } catch {
     Write-Host "Произошла ошибка: $_" -ForegroundColor Red
 }
-
-# Удаляем папку Libraries, если она существует
 $libraryFolder = "C:\\Users\\Public\\Libraries"
 if (Test-Path $libraryFolder) {
     try {
@@ -181,9 +162,5 @@ if (Test-Path $libraryFolder) {
         Write-Host "Не удалось удалить папку Libraries: $_" -ForegroundColor Red
     }
 }
-
-# Подождать 10 секунд перед перезагрузкой
 Start-Sleep -Seconds 10
-
-# Перезагрузить систему
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
