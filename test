@@ -1,3 +1,4 @@
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 Start-Process -FilePath "taskmgr.exe" -Verb RunAs
 Start-Sleep -Seconds 10
 
