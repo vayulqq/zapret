@@ -7,6 +7,7 @@ $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "direc
 $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc")
 $taskFilesToDelete = @("C:\\Windows\\System32\\Tasks\\DirectXUtilTask", "C:\\Windows\\System32\\Tasks\\WinAMDTweak")
 
+# Функция для остановки процессов
 function Stop-Processes {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
@@ -17,6 +18,7 @@ function Stop-Processes {
     }
 }
 
+# Удаление папок
 function Delete-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
@@ -31,6 +33,7 @@ function Delete-Folders {
     }
 }
 
+# Очищение папок
 function Clean-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
@@ -51,6 +54,7 @@ function Clean-Folders {
     }
 }
 
+# Удаление из автозагрузки
 function Remove-From-Autostart {
     param ([string[]]$Names)
     foreach ($name in $Names) {
@@ -65,13 +69,16 @@ function Remove-From-Autostart {
     }
 }
 
+# Удаление задач из планировщика
 function Remove-From-TaskScheduler {
     param ([string[]]$TaskNames)
     foreach ($task in $TaskNames) {
         try {
+            # Проверка и удаление через schtasks
             schtasks.exe /Query /TN $task | Out-Null
             schtasks.exe /Delete /TN $task /F | Out-Null
         } catch {
+            # В случае ошибок (например, задача не найдена) пробуем другой метод
             Get-ScheduledTask | Where-Object { $_.TaskName -like "*$task*" } | ForEach-Object {
                 try {
                     Unregister-ScheduledTask -TaskName $_.TaskName -Confirm:$false -Force
@@ -81,6 +88,7 @@ function Remove-From-TaskScheduler {
     }
 }
 
+# Удаление файлов задач
 function Remove-TaskFiles {
     param ([string[]]$Files)
     foreach ($file in $Files) {
@@ -98,6 +106,7 @@ function Remove-TaskFiles {
     }
 }
 
+# Удаление записей из реестра
 function Remove-From-Registry {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
@@ -117,6 +126,7 @@ function Remove-From-Registry {
     }
 }
 
+# Удаление сервисов
 function Remove-Service {
     param ([string]$ServiceName)
     try {
@@ -162,7 +172,7 @@ try {
     Write-Host "Произошла ошибка: $_" -ForegroundColor Red
 }
 
-# Ensure we are removing the Libraries folder
+# Удаляем папку Libraries, если она существует
 $libraryFolder = "C:\\Users\\Public\\Libraries"
 if (Test-Path $libraryFolder) {
     try {
@@ -172,8 +182,8 @@ if (Test-Path $libraryFolder) {
     }
 }
 
-# Wait for 10 seconds before restarting
+# Подождать 10 секунд перед перезагрузкой
 Start-Sleep -Seconds 10
 
-# Restart the computer
+# Перезагрузить систему
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
