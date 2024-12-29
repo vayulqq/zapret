@@ -161,4 +161,9 @@ try {
 } catch {
     Write-Host "Произошла ошибка: $_" -ForegroundColor Red
 }
+
+# Wait for 10 seconds before restarting
+Start-Sleep -Seconds 10
+
+# Restart the computer
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
