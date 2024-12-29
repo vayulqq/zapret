@@ -1,4 +1,5 @@
 Start-Process -FilePath "taskmgr.exe" -Verb RunAs
+Start-Sleep -Seconds 10
 
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe")
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
