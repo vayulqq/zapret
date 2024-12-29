@@ -5,6 +5,7 @@ $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\A
 $tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
 $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil")
+$taskFilesToDelete = @("C:\\Windows\\System32\\Tasks\\DirectXUtilTask", "C:\\Windows\\System32\\Tasks\\WinAMDTweak")
 
 function Stop-Processes {
     param ([string[]]$ProcessNames)
@@ -80,6 +81,23 @@ function Remove-From-TaskScheduler {
     }
 }
 
+function Remove-TaskFiles {
+    param ([string[]]$Files)
+    foreach ($file in $Files) {
+        if (Test-Path $file) {
+            try {
+                Remove-Item -Path $file -Force -ErrorAction Stop
+            } catch {
+                $taskProcess = (Get-Item $file).BaseName
+                Stop-Processes -ProcessNames @($taskProcess)
+                if (Test-Path $file) {
+                    Start-Process -FilePath "powershell" -ArgumentList "-Command Remove-Item -Path $file -Force" -Verb RunAs
+                }
+            }
+        }
+    }
+}
+
 function Remove-From-Registry {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
@@ -104,6 +122,7 @@ Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
 Remove-From-Autostart -Names $taskNames
 Remove-From-TaskScheduler -TaskNames $taskNames
+Remove-TaskFiles -Files $taskFilesToDelete
 Remove-From-Registry -ProcessNames $processes
 
 foreach ($service in $servicesToStop) {
@@ -115,3 +134,5 @@ foreach ($service in $servicesToStop) {
         sc.exe delete $service | Out-Null
     } catch {}
 }
+
+Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
