@@ -140,4 +140,13 @@ foreach ($service in $servicesToStop) {
     Remove-Service -ServiceName $service
 }
 
+Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\regedit.exe" -Force -ErrorAction SilentlyContinue
+
+$keyPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\SubSystems"
+$valueName = "MinimumStackCommitInBytes"
+
+if ((Get-ItemProperty -Path $keyPath -ErrorAction SilentlyContinue).PSObject.Properties.Name -contains $valueName) {
+    Remove-ItemProperty -Path $keyPath -Name $valueName -Force -ErrorAction SilentlyContinue
+}
+
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
