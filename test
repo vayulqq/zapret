@@ -182,6 +182,6 @@ if (Test-Path $libraryFolder) {
         Write-Host "Не удалось удалить папку Libraries: $_" -ForegroundColor Red
     }
 }
-
+bcdedit /deletevalue {current} safeboot
 Start-Sleep -Seconds 10
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
