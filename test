@@ -4,7 +4,7 @@ $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPla
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
 $tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil")
-$servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil")
+$servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc")
 $taskFilesToDelete = @("C:\\Windows\\System32\\Tasks\\DirectXUtilTask", "C:\\Windows\\System32\\Tasks\\WinAMDTweak")
 
 function Stop-Processes {
@@ -117,6 +117,17 @@ function Remove-From-Registry {
     }
 }
 
+function Remove-Service {
+    param ([string]$ServiceName)
+    try {
+        $serviceObj = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        if ($serviceObj -and $serviceObj.Status -eq 'Running') {
+            Stop-Service -Name $ServiceName -Force
+        }
+        sc.exe delete $ServiceName | Out-Null
+    } catch {}
+}
+
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
@@ -126,13 +137,7 @@ Remove-TaskFiles -Files $taskFilesToDelete
 Remove-From-Registry -ProcessNames $processes
 
 foreach ($service in $servicesToStop) {
-    try {
-        $serviceObj = Get-Service -Name $service -ErrorAction SilentlyContinue
-        if ($serviceObj -and $serviceObj.Status -eq 'Running') {
-            Stop-Service -Name $service -Force
-        }
-        sc.exe delete $service | Out-Null
-    } catch {}
+    Remove-Service -ServiceName $service
 }
 
 Start-Process -FilePath "powershell" -ArgumentList "-Command Restart-Computer -Force" -Verb RunAs
