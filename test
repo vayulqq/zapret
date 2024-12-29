@@ -184,7 +184,7 @@ foreach ($service in $servicesToStop) {
     Remove-Service -ServiceName $service
 }
 try {
-    $basePath = "HKLM:\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"
+    $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
 
     foreach ($subKey in $subKeys) {
