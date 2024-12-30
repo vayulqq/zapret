@@ -188,6 +188,10 @@ try {
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
 
     foreach ($subKey in $subKeys) {
+        if ($subKey.PSChildName -ieq "svchost.exe") {
+            continue
+        }
+
         $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
         if ($parameters -and $parameters.PSObject.Properties.Name -contains "MinimumStackCommitInBytes") {
             Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop
