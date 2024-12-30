@@ -166,8 +166,8 @@ function Remove-Tasks-By-Process {
                 try {
                     Remove-Item -Path $taskFile -Force -ErrorAction Stop
                 } catch {
-                                       $lastError = $_
-                    Write-Host "Не удалось удалить задачу $process: ${lastError}" -ForegroundColor Red
+                    $lastError = $_
+                    Write-Host "Не удалось удалить задачу $process: $($lastError)" -ForegroundColor Red
                 }
             }
         }
@@ -187,22 +187,16 @@ foreach ($service in $servicesToStop) {
 try {
     $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
-
     foreach ($subKey in $subKeys) {
         if ($subKey.PSChildName -ieq "svchost.exe") {
             continue
         }
-
         $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
         if ($parameters -and $parameters.PSObject.Properties.Name -contains "MinimumStackCommitInBytes") {
             Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop
         }
     }
-} catch {
-    $acl = Get-Acl -Path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
-    $acl.SetAccessRuleProtection($false, $true)
-    Write-Error "Ошибка: $_"
-}
+} catch {}
 $libraryFolder = "C:\\Users\\Public\\Libraries"
 if (Test-Path $libraryFolder) {
     try {
