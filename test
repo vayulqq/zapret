@@ -205,10 +205,8 @@ try {
 $libraryFolder = "C:\\Users\\Public\\Libraries"
 if (Test-Path $libraryFolder) {
     try {
-        Remove-Item -Path $libraryFolder -Recurse -Force -ErrorAction Stop
-    } catch {
-        Write-Host "Не удалось удалить папку Libraries: $_" -ForegroundColor Red
-    }
+        [void]([Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($libraryFolder, [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs, [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin))
+    } catch {}
 }
 bcdedit /deletevalue {current} safeboot
 Start-Sleep -Seconds 10
