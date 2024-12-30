@@ -166,8 +166,8 @@ function Remove-Tasks-By-Process {
                 try {
                     Remove-Item -Path $taskFile -Force -ErrorAction Stop
                 } catch {
-                    $lastError = $_
-Write-Host "Не удалось удалить задачу $process: ${lastError}" -ForegroundColor Red
+                                       $lastError = $_
+                    Write-Host "Не удалось удалить задачу $process: ${lastError}" -ForegroundColor Red
                 }
             }
         }
