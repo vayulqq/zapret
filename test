@@ -1,42 +1,4 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-function Check-SafeMode {
-    $safeModeKey = "HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Option"
-    try {
-        if (Test-Path $safeModeKey) {
-            $safeModeValue = Get-ItemProperty -Path $safeModeKey -Name Option -ErrorAction SilentlyContinue
-            if ($safeModeValue.Option -eq 1) {
-                return $true
-            } else {
-                return $false
-            }
-        } else {
-            return $false
-        }
-    } catch {
-        return $false
-    }
-}
-function Check-AdminRights {
-    try {
-        $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-        return $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
-    } catch {
-        return $false
-    }
-}
-$safeMode = Check-SafeMode
-$isAdmin = Check-AdminRights
-if (-not $safeMode) {
-    Write-Host "Система не запущена в безопасном режиме. Включите безопасный режим и повторите запуск." -ForegroundColor Yellow
-    Write-Host "Для входа в безопасный режим откройте msconfig и включите безопасный режим (обязательно с сетью)."
-    return
-}
-if (-not $isAdmin) {
-    Write-Host "Скрипт не запущен от имени администратора. Перезапустите PowerShell с правами администратора." -ForegroundColor Yellow
-    return
-}
-Write-Host "Все проверки пройдены. Скрипт работает в безопасном режиме и под правами администратора." -ForegroundColor Green
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "winws.exe")
 $foldersToCheck = @("C:\\ProgramData\\DirectX", "C:\\Users\\Public\\Libraries\\AMD", "C:\\Users\\Public\\Libraries\\directx")
 $tempFoldersToClean = @("$env:Temp", "C:\\Windows\\Temp")
