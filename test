@@ -36,10 +36,12 @@ $isAdmin = Check-AdminRights
 
 if (-not $safeMode) {
     Write-Host "Скрипт должен быть запущен в безопасном режиме." -ForegroundColor Yellow
+pause
 }
 
 if (-not $isAdmin) {
     Write-Host "Скрипт должен быть запущен от имени администратора." -ForegroundColor Yellow
+pause
 }
 
 Write-Host "Все проверки пройдены. Скрипт запущен в безопасном режиме и от имени администратора." -ForegroundColor Green
