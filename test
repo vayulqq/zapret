@@ -8,7 +8,7 @@ function Check-SafeMode {
         return $true
     } else {
         Write-Host "Скрипт должен быть запущен в безопасном режиме. Перезапустите систему в безопасном режиме и повторите попытку." -ForegroundColor Yellow
-        exit
+        
     }
 }
 
