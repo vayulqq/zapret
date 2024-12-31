@@ -3,31 +3,21 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 # Функция для проверки безопасного режима
 function Check-SafeMode {
     $safeModeKey = "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Option"
-    try {
-        if (Test-Path $safeModeKey) {
-            $safeModeValue = Get-ItemProperty -Path $safeModeKey -Name Option -ErrorAction SilentlyContinue
-            if ($safeModeValue.Option -eq 1) {
-                return $true
-            } else {
-                return $false
-            }
-        } else {
-            return $false
+    if (Test-Path $safeModeKey) {
+        $safeModeValue = Get-ItemProperty -Path $safeModeKey -ErrorAction SilentlyContinue
+        if ($safeModeValue.Option -eq 1) {
+            return $true
         }
-    } catch {
-        return $false
     }
+    return $false
 }
 
 # Функция для проверки прав администратора
 function Check-AdminRights {
-    try {
-        $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-        return $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
-    } catch {
-        return $false
-    }
+    $adminGroup = [System.Security.Principal.WindowsBuiltInRole]::Administrator
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole($adminGroup)
 }
 
 # Основные проверки
@@ -36,7 +26,6 @@ $isAdmin = Check-AdminRights
 
 if (-not $safeMode) {
     Write-Host "Система не запущена в безопасном режиме. Включите безопасный режим и повторите запуск." -ForegroundColor Yellow
-    Write-Host "Для входа в безопасный режим откройте msconfig и включите безопасный режим (обязательно с сетью)."
     return
 }
 
@@ -60,8 +49,7 @@ function Stop-Processes {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
         try {
-            $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
-            if ($proc) { Stop-Process -Name $process -Force }
+            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
         } catch {}
     }
 }
@@ -71,11 +59,8 @@ function Delete-Folders {
     foreach ($folder in $Folders) {
         if (Test-Path $folder) {
             try {
-                Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
-            } catch {
-                Stop-Processes -ProcessNames $processes
-                Start-Process -FilePath powershell -ArgumentList "-Command Remove-Item -Path $folder -Recurse -Force" -Verb RunAs
-            }
+                Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+            } catch {}
         }
     }
 }
@@ -84,17 +69,11 @@ function Clean-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
         if (Test-Path $folder) {
-            try {
-                Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
-                    try {
-                        if ($_.PSIsContainer) {
-                            Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
-                        } else {
-                            Remove-Item -Path $_.FullName -Force -ErrorAction Stop
-                        }
-                    } catch {}
-                }
-            } catch {}
+            Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                try {
+                    Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                } catch {}
+            }
         }
     }
 }
@@ -103,12 +82,8 @@ function Remove-From-Autostart {
     param ([string[]]$Names)
     foreach ($name in $Names) {
         try {
-            if (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run") {
-                Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
-            }
-            if (Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run") {
-                Remove-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
-            }
+            Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
+            Remove-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
         } catch {}
     }
 }
@@ -117,42 +92,15 @@ function Remove-From-TaskScheduler {
     param ([string[]]$TaskNames)
     foreach ($task in $TaskNames) {
         try {
-            schtasks.exe /Query /TN $task > $null 2>&1
             schtasks.exe /Delete /TN $task /F > $null 2>&1
-        } catch {
-            Get-ScheduledTask | Where-Object { $_.TaskName -like $task } | ForEach-Object {
-                try {
-                    Unregister-ScheduledTask -TaskName $_.TaskName -Confirm:$false -Force
-                } catch {}
-            }
-        }
-    }
-}
-
-function Remove-TaskFiles {
-    param ([string[]]$Files)
-    foreach ($file in $Files) {
-        if (Test-Path $file) {
-            try {
-                Remove-Item -Path $file -Force -ErrorAction Stop
-            } catch {
-                $taskProcess = (Get-Item $file).BaseName
-                Stop-Processes -ProcessNames @($taskProcess)
-                if (Test-Path $file) {
-                    Start-Process -FilePath powershell -ArgumentList "-Command Remove-Item -Path $file -Force" -Verb RunAs
-                }
-            }
-        }
+        } catch {}
     }
 }
 
 function Remove-Service {
     param ([string]$ServiceName)
     try {
-        $serviceObj = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        if ($serviceObj -and $serviceObj.Status -eq 'Running') {
-            Stop-Service -Name $ServiceName -Force
-        }
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
         sc.exe delete $ServiceName > $null 2>&1
     } catch {}
 }
@@ -163,7 +111,6 @@ Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
 Remove-From-Autostart -Names $taskNames
 Remove-From-TaskScheduler -TaskNames $taskNames
-Remove-TaskFiles -Files $taskFilesToDelete
 
 foreach ($service in $servicesToStop) {
     Remove-Service -ServiceName $service
