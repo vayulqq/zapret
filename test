@@ -1,6 +1,6 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
-# Функция для проверки безопасного режима
+# Проверка безопасного режима
 function Check-SafeMode {
     $safeModeKey = "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Option"
     if (Test-Path $safeModeKey) {
@@ -12,29 +12,31 @@ function Check-SafeMode {
     return $false
 }
 
-# Функция для проверки прав администратора
+# Проверка прав администратора (в PowerShell 1.0 используется обходной метод)
 function Check-AdminRights {
-    $adminGroup = [System.Security.Principal.WindowsBuiltInRole]::Administrator
-    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
-    return $principal.IsInRole($adminGroup)
+    $adminGroupName = "Администраторы"
+    $currentUser = whoami.exe
+    $admins = net localgroup $adminGroupName
+    if ($admins -match $currentUser) {
+        return $true
+    }
+    return $false
 }
 
-# Основные проверки
+# Проверки
 $safeMode = Check-SafeMode
-$isAdmin = Check-AdminRights
-
 if (-not $safeMode) {
-    Write-Host "Система не запущена в безопасном режиме. Включите безопасный режим и повторите запуск." -ForegroundColor Yellow
+    Write-Host "Запустите Windows в безопасном режиме перед выполнением скрипта." -ForegroundColor Yellow
     return
 }
 
+$isAdmin = Check-AdminRights
 if (-not $isAdmin) {
-    Write-Host "Скрипт не запущен от имени администратора. Перезапустите PowerShell с правами администратора." -ForegroundColor Yellow
+    Write-Host "Скрипт должен быть запущен с правами администратора. Перезапустите PowerShell с администраторскими правами." -ForegroundColor Yellow
     return
 }
 
-Write-Host "Все проверки пройдены. Скрипт работает в безопасном режиме и под правами администратора." -ForegroundColor Green
+Write-Host "Проверки пройдены: безопасный режим включён, права администратора подтверждены." -ForegroundColor Green
 
 # Переменные
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "winws.exe")
@@ -42,81 +44,48 @@ $foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries\AMD", "
 $tempFoldersToClean = @($env:Temp, "C:\Windows\Temp")
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "winws")
 $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc", "zapret", "zapret DPI bypass", "windivert")
-$taskFilesToDelete = @("C:\Windows\System32\Tasks\DirectXUtilTask", "C:\Windows\System32\Tasks\WinAMDTweak")
 
-# Функции
-function Stop-Processes {
-    param ([string[]]$ProcessNames)
-    foreach ($process in $ProcessNames) {
-        try {
-            Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
-        } catch {}
-    }
-}
-
-function Delete-Folders {
-    param ([string[]]$Folders)
-    foreach ($folder in $Folders) {
-        if (Test-Path $folder) {
-            try {
-                Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
-            } catch {}
-        }
-    }
-}
-
-function Clean-Folders {
-    param ([string[]]$Folders)
-    foreach ($folder in $Folders) {
-        if (Test-Path $folder) {
-            Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
-                try {
-                    Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
-                } catch {}
-            }
-        }
-    }
-}
-
-function Remove-From-Autostart {
-    param ([string[]]$Names)
-    foreach ($name in $Names) {
-        try {
-            Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
-            Remove-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
-        } catch {}
-    }
-}
-
-function Remove-From-TaskScheduler {
-    param ([string[]]$TaskNames)
-    foreach ($task in $TaskNames) {
-        try {
-            schtasks.exe /Delete /TN $task /F > $null 2>&1
-        } catch {}
-    }
-}
-
-function Remove-Service {
-    param ([string]$ServiceName)
+# Удаление процессов
+foreach ($process in $processes) {
     try {
-        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-        sc.exe delete $ServiceName > $null 2>&1
+        Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
     } catch {}
 }
 
-# Выполнение функций
-Stop-Processes -ProcessNames $processes
-Delete-Folders -Folders $foldersToCheck
-Clean-Folders -Folders $tempFoldersToClean
-Remove-From-Autostart -Names $taskNames
-Remove-From-TaskScheduler -TaskNames $taskNames
-
-foreach ($service in $servicesToStop) {
-    Remove-Service -ServiceName $service
+# Удаление папок
+foreach ($folder in $foldersToCheck) {
+    if (Test-Path $folder) {
+        try {
+            Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+        } catch {}
+    }
 }
 
-# Удаление безопасного режима и перезагрузка
+# Очистка временных папок
+foreach ($temp in $tempFoldersToClean) {
+    if (Test-Path $temp) {
+        try {
+            Get-ChildItem -Path $temp -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        } catch {}
+    }
+}
+
+# Удаление задач из планировщика
+foreach ($task in $taskNames) {
+    try {
+        schtasks.exe /Delete /TN $task /F > $null 2>&1
+    } catch {}
+}
+
+# Удаление сервисов
+foreach ($service in $servicesToStop) {
+    try {
+        sc.exe stop $service > $null 2>&1
+        sc.exe delete $service > $null 2>&1
+    } catch {}
+}
+
+# Отключение безопасного режима и перезагрузка
 bcdedit /deletevalue {current} safeboot
 Start-Sleep -Seconds 10
 Restart-Computer -Force
