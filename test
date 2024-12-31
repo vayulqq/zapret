@@ -1,6 +1,8 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+
+# Функция для проверки безопасного режима
 function Check-SafeMode {
-    $safeModeKey = HKLMSYSTEMCurrentControlSetControlSafeBootOption
+    $safeModeKey = "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Option"
     try {
         if (Test-Path $safeModeKey) {
             $safeModeValue = Get-ItemProperty -Path $safeModeKey -Name Option -ErrorAction SilentlyContinue
@@ -16,33 +18,44 @@ function Check-SafeMode {
         return $false
     }
 }
+
+# Функция для проверки прав администратора
 function Check-AdminRights {
     try {
-        $currentUser = [Security.Principal.WindowsIdentity]GetCurrent()
+        $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
         $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-        return $principal.IsInRole([Security.Principal.WindowsBuiltinRole]Administrator)
+        return $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
     } catch {
         return $false
     }
 }
+
+# Основные проверки
 $safeMode = Check-SafeMode
 $isAdmin = Check-AdminRights
+
 if (-not $safeMode) {
-    Write-Host Система не запущена в безопасном режиме. Включите безопасный режим и повторите запуск. -ForegroundColor Yellow
-    Write-Host Для входа в безопасный режим откройте msconfig и включите безопасный режим (обязательно с сетью).
+    Write-Host "Система не запущена в безопасном режиме. Включите безопасный режим и повторите запуск." -ForegroundColor Yellow
+    Write-Host "Для входа в безопасный режим откройте msconfig и включите безопасный режим (обязательно с сетью)."
     return
 }
+
 if (-not $isAdmin) {
-    Write-Host Скрипт не запущен от имени администратора. Перезапустите PowerShell с правами администратора. -ForegroundColor Yellow
+    Write-Host "Скрипт не запущен от имени администратора. Перезапустите PowerShell с правами администратора." -ForegroundColor Yellow
     return
 }
-Write-Host Все проверки пройдены. Скрипт работает в безопасном режиме и под правами администратора. -ForegroundColor Green
-$processes = @(ddxdiag.exe, SppExtFileObj.exe, SteamUpdate.exe, OriginPlayer.exe, directxutil.exe, winws.exe)
-$foldersToCheck = @(CProgramDataDirectX, CUsersPublicLibrariesAMD, CUsersPublicLibrariesdirectx)
-$tempFoldersToClean = @($envTemp, CWindowsTemp)
-$taskNames = @(ddxdiag, SppExtFileObj, SteamUpdate, OriginPlayer, directxutil, winws)
-$servicesToStop = @(ddxdiag, SppExtFileObj, SteamUpdate, directxutil, DrvSvc, zapret, zapret DPI bypass, windivert)
-$taskFilesToDelete = @(CWindowsSystem32TasksDirectXUtilTask, CWindowsSystem32TasksWinAMDTweak)
+
+Write-Host "Все проверки пройдены. Скрипт работает в безопасном режиме и под правами администратора." -ForegroundColor Green
+
+# Переменные
+$processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "winws.exe")
+$foldersToCheck = @("C:\ProgramData\DirectX", "C:\Users\Public\Libraries\AMD", "C:\Users\Public\Libraries\directx")
+$tempFoldersToClean = @($env:Temp, "C:\Windows\Temp")
+$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "winws")
+$servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "DrvSvc", "zapret", "zapret DPI bypass", "windivert")
+$taskFilesToDelete = @("C:\Windows\System32\Tasks\DirectXUtilTask", "C:\Windows\System32\Tasks\WinAMDTweak")
+
+# Функции
 function Stop-Processes {
     param ([string[]]$ProcessNames)
     foreach ($process in $ProcessNames) {
@@ -52,6 +65,7 @@ function Stop-Processes {
         } catch {}
     }
 }
+
 function Delete-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
@@ -60,18 +74,18 @@ function Delete-Folders {
                 Remove-Item -Path $folder -Recurse -Force -ErrorAction Stop
             } catch {
                 Stop-Processes -ProcessNames $processes
-                Start-Process -FilePath powershell -ArgumentList -Command Remove-Item -Path $folder -Recurse -Force -Verb RunAs
+                Start-Process -FilePath powershell -ArgumentList "-Command Remove-Item -Path $folder -Recurse -Force" -Verb RunAs
             }
         }
     }
 }
+
 function Clean-Folders {
     param ([string[]]$Folders)
     foreach ($folder in $Folders) {
         if (Test-Path $folder) {
             try {
-                Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue 
-                ForEach-Object {
+                Get-ChildItem -Path $folder -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
                     try {
                         if ($_.PSIsContainer) {
                             Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction Stop
@@ -84,34 +98,37 @@ function Clean-Folders {
         }
     }
 }
+
 function Remove-From-Autostart {
     param ([string[]]$Names)
     foreach ($name in $Names) {
         try {
-            if (Test-Path HKCUSoftwareMicrosoftWindowsCurrentVersionRun) {
-                Remove-ItemProperty -Path HKCUSoftwareMicrosoftWindowsCurrentVersionRun -Name $name -ErrorAction SilentlyContinue
+            if (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run") {
+                Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
             }
-            if (Test-Path HKLMSoftwareMicrosoftWindowsCurrentVersionRun) {
-                Remove-ItemProperty -Path HKLMSoftwareMicrosoftWindowsCurrentVersionRun -Name $name -ErrorAction SilentlyContinue
+            if (Test-Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run") {
+                Remove-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run" -Name $name -ErrorAction SilentlyContinue
             }
         } catch {}
     }
 }
+
 function Remove-From-TaskScheduler {
     param ([string[]]$TaskNames)
     foreach ($task in $TaskNames) {
         try {
-            schtasks.exe Query TN $task  Out-Null
-            schtasks.exe Delete TN $task F  Out-Null
+            schtasks.exe /Query /TN $task > $null 2>&1
+            schtasks.exe /Delete /TN $task /F > $null 2>&1
         } catch {
-            Get-ScheduledTask  Where-Object { $_.TaskName -like $task }  ForEach-Object {
+            Get-ScheduledTask | Where-Object { $_.TaskName -like $task } | ForEach-Object {
                 try {
-                    Unregister-ScheduledTask -TaskName $_.TaskName -Confirm$false -Force
+                    Unregister-ScheduledTask -TaskName $_.TaskName -Confirm:$false -Force
                 } catch {}
             }
         }
     }
 }
+
 function Remove-TaskFiles {
     param ([string[]]$Files)
     foreach ($file in $Files) {
@@ -122,30 +139,13 @@ function Remove-TaskFiles {
                 $taskProcess = (Get-Item $file).BaseName
                 Stop-Processes -ProcessNames @($taskProcess)
                 if (Test-Path $file) {
-                    Start-Process -FilePath powershell -ArgumentList -Command Remove-Item -Path $file -Force -Verb RunAs
+                    Start-Process -FilePath powershell -ArgumentList "-Command Remove-Item -Path $file -Force" -Verb RunAs
                 }
             }
         }
     }
 }
-function Remove-From-Registry {
-    param ([string[]]$ProcessNames)
-    foreach ($process in $ProcessNames) {
-        $pathsToCheck = @(
-            HKCUSoftware$process,
-            HKCUSoftwareMicrosoftWindowsCurrentVersionRun$process,
-            HKLMSoftware$process,
-            HKLMSoftwareMicrosoftWindowsCurrentVersionRun$process
-        )
-        foreach ($path in $pathsToCheck) {
-            try {
-                if (Test-Path $path) {
-                    Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
-                }
-            } catch {}
-        }
-    }
-}
+
 function Remove-Service {
     param ([string]$ServiceName)
     try {
@@ -153,62 +153,23 @@ function Remove-Service {
         if ($serviceObj -and $serviceObj.Status -eq 'Running') {
             Stop-Service -Name $ServiceName -Force
         }
-        sc.exe delete $ServiceName  Out-Null
+        sc.exe delete $ServiceName > $null 2>&1
     } catch {}
 }
-function Remove-Tasks-By-Process {
-    param ([string[]]$ProcessNames)
-    $taskPath = CWindowsSystem32Tasks
-    if (Test-Path $taskPath) {
-        foreach ($process in $ProcessNames) {
-            $taskFile = Join-Path -Path $taskPath -ChildPath $process
-            if (Test-Path $taskFile) {
-                try {
-                    Remove-Item -Path $taskFile -Force -ErrorAction Stop
-                } catch {
-                                       $lastError = $_
-                    Write-Host Не удалось удалить задачу $process ${lastError} -ForegroundColor Red
-                }
-            }
-        }
-    }
-}
+
+# Выполнение функций
 Stop-Processes -ProcessNames $processes
 Delete-Folders -Folders $foldersToCheck
 Clean-Folders -Folders $tempFoldersToClean
 Remove-From-Autostart -Names $taskNames
 Remove-From-TaskScheduler -TaskNames $taskNames
 Remove-TaskFiles -Files $taskFilesToDelete
-Remove-Tasks-By-Process -ProcessNames $processes
-Remove-From-Registry -ProcessNames $processes
+
 foreach ($service in $servicesToStop) {
     Remove-Service -ServiceName $service
 }
-try {
-    $basePath = HKLMSoftwareMicrosoftWindows NTCurrentVersionImage File Execution Options
-    $subKeys = Get-ChildItem -Path $basePath  Where-Object { $_.PSIsContainer }
 
-    foreach ($subKey in $subKeys) {
-        if ($subKey.PSChildName -ieq svchost.exe) {
-            continue
-        }
-
-        $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
-        if ($parameters -and $parameters.PSObject.Properties.Name -contains MinimumStackCommitInBytes) {
-            Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop
-        }
-    }
-} catch {
-    $acl = Get-Acl -Path HKLMSoftwareMicrosoftWindows NTCurrentVersionImage File Execution Options
-    $acl.SetAccessRuleProtection($false, $true)
-    Write-Error Ошибка $_
-}
-$libraryFolder = CUsersPublicLibraries
-if (Test-Path $libraryFolder) {
-    try {
-        [void]([Microsoft.VisualBasic.FileIO.FileSystem]DeleteDirectory($libraryFolder, [Microsoft.VisualBasic.FileIO.UIOption]OnlyErrorDialogs, [Microsoft.VisualBasic.FileIO.RecycleOption]SendToRecycleBin))
-    } catch {}
-}
-bcdedit deletevalue {current} safeboot
+# Удаление безопасного режима и перезагрузка
+bcdedit /deletevalue {current} safeboot
 Start-Sleep -Seconds 10
-Start-Process -FilePath powershell -ArgumentList -Command Restart-Computer -Force -Verb RunAs
+Restart-Computer -Force
