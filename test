@@ -1,18 +1,18 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
-# Проверка безопасного режима
+# Проверка, запущен ли ПК в безопасном режиме
 function Check-SafeMode {
-    $safeModeKey = "HKLM\SYSTEM\CurrentControlSet\Control\SafeBoot\Option"
-    if (Test-Path $safeModeKey) {
-        $safeModeValue = Get-ItemProperty -Path $safeModeKey -ErrorAction SilentlyContinue
-        if ($safeModeValue.Option -eq 1) {
-            return $true
-        }
+    $safeMode = (Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\SafeBoot\Option" -Name "OptionValue" -ErrorAction SilentlyContinue).OptionValue
+    if ($safeMode -eq 1) {
+        Write-Host "Безопасный режим активен." -ForegroundColor Green
+        return $true
+    } else {
+        Write-Host "Скрипт должен быть запущен в безопасном режиме. Перезапустите систему в безопасном режиме и повторите попытку." -ForegroundColor Yellow
+        exit
     }
-    return $false
 }
 
-# Проверка прав администратора (в PowerShell 1.0 используется обходной метод)
+# Проверка прав администратора
 function Check-AdminRights {
     $adminGroupName = "Администраторы"
     $currentUser = whoami.exe
@@ -24,19 +24,12 @@ function Check-AdminRights {
 }
 
 # Проверки
-$safeMode = Check-SafeMode
-if (-not $safeMode) {
-    Write-Host "Запустите Windows в безопасном режиме перед выполнением скрипта." -ForegroundColor Yellow
-    return
-}
-
+Check-SafeMode
 $isAdmin = Check-AdminRights
 if (-not $isAdmin) {
     Write-Host "Скрипт должен быть запущен с правами администратора. Перезапустите PowerShell с администраторскими правами." -ForegroundColor Yellow
     return
 }
-
-Write-Host "Проверки пройдены: безопасный режим включён, права администратора подтверждены." -ForegroundColor Green
 
 # Переменные
 $processes = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "winws.exe")
@@ -49,6 +42,37 @@ $servicesToStop = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "directxutil", "D
 foreach ($process in $processes) {
     try {
         Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+    } catch {}
+}
+
+# Удаление записей из автозагрузки (реестр и папки)
+$registryPaths = @(
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+)
+foreach ($path in $registryPaths) {
+    foreach ($process in $processes) {
+        try {
+            Remove-ItemProperty -Path $path -Name $process -ErrorAction SilentlyContinue
+        } catch {}
+    }
+}
+
+$startupFolders = @(
+    "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup",
+    "$env:AppData\Microsoft\Windows\Start Menu\Programs\Startup"
+)
+foreach ($folder in $startupFolders) {
+    if (Test-Path $folder) {
+        Get-ChildItem -Path $folder -Force | Where-Object { $processes -contains $_.Name } | Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Удаление автозагрузки из служб
+foreach ($service in $servicesToStop) {
+    try {
+        sc.exe stop $service > $null 2>&1
+        sc.exe delete $service > $null 2>&1
     } catch {}
 }
 
@@ -77,15 +101,54 @@ foreach ($task in $taskNames) {
     } catch {}
 }
 
-# Удаление сервисов
-foreach ($service in $servicesToStop) {
-    try {
-        sc.exe stop $service > $null 2>&1
-        sc.exe delete $service > $null 2>&1
-    } catch {}
+# Удаление записей из реестра (общих ключей)
+$malwareRegistryKeys = @(
+    "HKLM:\Software\ddxdiag",
+    "HKCU:\Software\SppExtFileObj",
+    "HKLM:\Software\SteamUpdate",
+    "HKCU:\Software\directxutil"
+)
+foreach ($key in $malwareRegistryKeys) {
+    if (Test-Path $key) {
+        Remove-Item -Path $key -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
-# Отключение безопасного режима и перезагрузка
-bcdedit /deletevalue {current} safeboot
+# Удаление XML-файлов задач
+$scheduledTasksPath = "C:\Windows\System32\Tasks"
+foreach ($task in $taskNames) {
+    $taskPath = Join-Path -Path $scheduledTasksPath -ChildPath $task
+    if (Test-Path $taskPath) {
+        Remove-Item -Path $taskPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Отключение безопасного режима
+function Disable-SafeMode {
+    try {
+        bcdedit /deletevalue safeboot > $null 2>&1
+        Write-Host "Безопасный режим отключен." -ForegroundColor Green
+    } catch {
+        Write-Host "Не удалось отключить безопасный режим. Проверьте права доступа." -ForegroundColor Red
+    }
+}
+try {
+    $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
+    $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
+
+    foreach ($subKey in $subKeys) {
+        $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
+        if ($parameters -and $parameters.PSObject.Properties.Name -contains "MinimumStackCommitInBytes") {
+            Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop
+        }
+    }
+} catch {
+    Write-Host "Произошла ошибка: $_" -ForegroundColor Red
+}
+
+Disable-SafeMode
+
+# Ожидание и перезагрузка ПК
 Start-Sleep -Seconds 10
-Restart-Computer -Force
+Write-Host "Перезагрузка компьютера..." -ForegroundColor Green
+shutdown.exe /r /t 0
