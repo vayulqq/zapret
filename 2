@@ -1,3 +1,5 @@
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+
 try {
     $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
