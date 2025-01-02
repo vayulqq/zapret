@@ -44,8 +44,8 @@ $removeTempFolder = {
         }
     }
 }
-Stop-Service -Name "DrvSvc" -Force | Out-Null
-sc.exe delete DrvSvc | Out-Null
+sc.exe stop "DrvSvc" >nul
+sc.exe delete "DrvSvc" >nul
 & $removeTempFolder $env:TEMP
 & $removeTempFolder $env:USERPROFILE\AppData\Local\Temp
 & $removeTempFolder "C:\Windows\Temp"
