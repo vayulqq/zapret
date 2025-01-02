@@ -2,30 +2,14 @@ try {
     $basePath = "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options"
     $subKeys = Get-ChildItem -Path $basePath | Where-Object { $_.PSIsContainer }
 
-    # Если нет подкаталогов в реестре, выводим сообщение
-    if ($subKeys.Count -eq 0) {
-        Write-Host "Нет подкаталогов в $basePath" -ForegroundColor Yellow
-    }
-
     foreach ($subKey in $subKeys) {
-        Write-Host "Обрабатываем ключ: $($subKey.PSPath)"
-
         try {
-            # Пытаемся получить свойства из текущего ключа
             $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
-            
-            # Проверяем наличие свойства MinimumStackCommitInBytes
             if ($parameters -and $parameters.PSObject.Properties.Name -contains "MinimumStackCommitInBytes") {
-                Write-Host "Свойство MinimumStackCommitInBytes найдено. Удаляем..." -ForegroundColor Green
                 Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop
-                Write-Host "Свойство успешно удалено." -ForegroundColor Green
-            } else {
-                Write-Host "Свойство MinimumStackCommitInBytes не найдено в ключе: $($subKey.PSPath)" -ForegroundColor Yellow
             }
         } catch {
-            Write-Host "Ошибка при обработке ключа $($subKey.PSPath): $_" -ForegroundColor Red
         }
     }
 } catch {
-    Write-Host "Произошла ошибка: $_" -ForegroundColor Red
 }
