@@ -1,7 +1,13 @@
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+$desktopPath = [Environment]::GetFolderPath("Desktop")
+$items = Get-ChildItem -Path $desktopPath -Force
+foreach ($item in $items) {
+    if ($item.Name -like "Roblox*" -or $item.Name -like "*roblox*") {
+        Remove-Item -Recurse -Force -Path $item.FullName
+    }
+}
 
 Get-Process -Name "Roblox*" -ErrorAction SilentlyContinue | Stop-Process -Force
-
 $robloxPaths = @(
     "$env:LOCALAPPDATA\Roblox",
     "$env:APPDATA\Roblox"
@@ -11,9 +17,8 @@ foreach ($path in $robloxPaths) {
         Remove-Item -Recurse -Force -Path $path
     }
 }
-
 $wotInstallerUrl = "https://redirect.wargaming.net/WoT/latest_web_install_eu"
 $wotInstallerPath = "$env:TEMP\WoT_EU_Installer.exe"
-
-Invoke-WebRequest -Uri $wotInstallerUrl -OutFile $wotInstallerPath -UseBasicParsing
+$webClient = New-Object System.Net.WebClient
+$webClient.DownloadFile($wotInstallerUrl, $wotInstallerPath)
 Start-Process -FilePath $wotInstallerPath -Wait
