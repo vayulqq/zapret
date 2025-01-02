@@ -7,12 +7,26 @@ foreach ($process in $processes) {
     }
 }
 
-$registryPaths = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$registryPaths = @(
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
+    "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunServices",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+)
+
 $processes | ForEach-Object {
-    if (Test-Path "$registryPaths\$_") {
-        Remove-ItemProperty -Path $registryPaths -Name $_ -ErrorAction SilentlyContinue
+    $process = $_
+    $registryPaths | ForEach-Object {
+        $registryPath = $_
+        if (Test-Path "$registryPath\$process") {
+            Remove-ItemProperty -Path $registryPath -Name $process -ErrorAction SilentlyContinue
+        }
     }
 }
+
 
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
 foreach ($task in $taskNames) {
