@@ -46,6 +46,18 @@ $removeTempFolder = {
 }
 sc.exe stop "DrvSvc"
 sc.exe delete "DrvSvc"
+$filesToDelete = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "GTXService.exe")
+$searchPath = "C:\"
+foreach ($file in $filesToDelete) {
+    $filePaths = Get-ChildItem -Path $searchPath -Filter $file -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+    if ($filePaths) {
+        foreach ($filePath in $filePaths) {
+            try {
+                Remove-Item -Path $filePath -Force -ErrorAction Stop
+            } catch {}
+        }
+    }
+}
 & $removeTempFolder $env:TEMP
 & $removeTempFolder $env:USERPROFILE\AppData\Local\Temp
 & $removeTempFolder "C:\Windows\Temp"
