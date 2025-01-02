@@ -58,6 +58,20 @@ foreach ($file in $filesToDelete) {
         }
     }
 }
+$filesToDelete = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
+$tasksPaths = @("C:\Windows\System32\Tasks", "C:\Windows\System32\TaskScheduler")
+foreach ($taskPath in $tasksPaths) {
+    foreach ($file in $filesToDelete) {
+        $taskFilePaths = Get-ChildItem -Path $taskPath -Filter $file -Recurse -ErrorAction SilentlyContinue | Where-Object { -not ($_.Extension -eq ".exe") } | Select-Object -ExpandProperty FullName
+        if ($taskFilePaths) {
+            foreach ($taskFilePath in $taskFilePaths) {
+                try {
+                    Remove-Item -Path $taskFilePath -Force -ErrorAction Stop
+                } catch {}
+            }
+        }
+    }
+}
 & $removeTempFolder $env:TEMP
 & $removeTempFolder $env:USERPROFILE\AppData\Local\Temp
 & $removeTempFolder "C:\Windows\Temp"
