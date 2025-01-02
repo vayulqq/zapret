@@ -15,7 +15,13 @@ $registryPaths = @(
     "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
     "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
     "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
-    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    "HKCU:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunServices",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
 )
 
 $processes | ForEach-Object {
