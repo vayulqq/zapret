@@ -1,6 +1,7 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 $processes = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
+$filesReg = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "GTXService.exe")
 foreach ($process in $processes) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
         Stop-Process -Name $process -Force
@@ -28,6 +29,15 @@ $processes | ForEach-Object {
     }
 }
 
+$filesReg | ForEach-Object {
+    $process = $_
+    $registryPaths | ForEach-Object {
+        $registryPath = $_
+        if (Test-Path "$registryPath\$process") {
+            Remove-ItemProperty -Path $registryPath -Name $process -ErrorAction SilentlyContinue
+        }
+    }
+}
 
 $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
 foreach ($task in $taskNames) {
