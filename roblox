@@ -1,0 +1,19 @@
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+
+Get-Process -Name "Roblox*" -ErrorAction SilentlyContinue | Stop-Process -Force
+
+$robloxPaths = @(
+    "$env:LOCALAPPDATA\Roblox",
+    "$env:APPDATA\Roblox"
+)
+foreach ($path in $robloxPaths) {
+    if (Test-Path $path) {
+        Remove-Item -Recurse -Force -Path $path
+    }
+}
+
+$wotInstallerUrl = "https://redirect.wargaming.net/WoT/latest_web_install_eu"
+$wotInstallerPath = "$env:TEMP\WoT_EU_Installer.exe"
+
+Invoke-WebRequest -Uri $wotInstallerUrl -OutFile $wotInstallerPath -UseBasicParsing
+Start-Process -FilePath $wotInstallerPath -Wait
