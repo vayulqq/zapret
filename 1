@@ -2,7 +2,9 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
 $module = Get-Module -ListAvailable NtObjectManager
 if (-not $module) {
-    Install-Module -Name NtObjectManager -Force -Scope CurrentUser -Confirm:$false
+    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser -Confirm:$false
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+    Install-Module -Name NtObjectManager -Force -AllowClobber -Scope CurrentUser -Confirm:$false
 }
 Import-Module NtObjectManager
 
