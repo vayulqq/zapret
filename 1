@@ -82,7 +82,7 @@ $removeTempFolder = {
     $files = Get-ChildItem -Path $tempFolderPath -Recurse -ErrorAction SilentlyContinue
     foreach ($file in $files) {
         try {
-            Remove-Item $file.FullName -Force -Recurse -Confirm:$false
+            Remove-Item $file.FullName -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
         } catch {}
     }
 }
