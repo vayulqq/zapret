@@ -11,77 +11,107 @@ Add-Type -AssemblyName System.Drawing
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'MinerFixer v. 1.2 by t.me/@VayuL'
-$form.Size = New-Object System.Drawing.Size(400, 300)
+$form.Size = New-Object System.Drawing.Size(500, 400)
 $form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
 $form.MaximizeBox = $false
 $form.MinimizeBox = $false
 $form.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 48)
 
+# Modern font
+$form.Font = New-Object System.Drawing.Font('Segoe UI', 10)
+
+# Status label to show action completion
+$lblStatus = New-Object System.Windows.Forms.Label
+$lblStatus.Text = 'Please choose an action.'
+$lblStatus.Size = New-Object System.Drawing.Size(400, 30)
+$lblStatus.Location = New-Object System.Drawing.Point(50, 250)
+$lblStatus.ForeColor = [System.Drawing.Color]::White
+$lblStatus.TextAlign = 'MiddleCenter'
+
+# Buttons
 $btnFixMiner = New-Object System.Windows.Forms.Button
 $btnFixMiner.Text = 'Fix Miner'
 $btnFixMiner.Size = New-Object System.Drawing.Size(150, 50)
-$btnFixMiner.Location = New-Object System.Drawing.Point(125, 40)
+$btnFixMiner.Location = New-Object System.Drawing.Point(175, 40)
 $btnFixMiner.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $btnFixMiner.ForeColor = [System.Drawing.Color]::White
 $btnFixMiner.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$btnFixMiner.FlatAppearance.BorderSize = 0
+$btnFixMiner.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnFixMiner.ToolTipText = 'Fix Miner issues'
 
 $btnFixRegedit = New-Object System.Windows.Forms.Button
 $btnFixRegedit.Text = 'Fix Regedit'
 $btnFixRegedit.Size = New-Object System.Drawing.Size(150, 50)
-$btnFixRegedit.Location = New-Object System.Drawing.Point(125, 110)
+$btnFixRegedit.Location = New-Object System.Drawing.Point(175, 110)
 $btnFixRegedit.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $btnFixRegedit.ForeColor = [System.Drawing.Color]::White
 $btnFixRegedit.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$btnFixRegedit.FlatAppearance.BorderSize = 0
+$btnFixRegedit.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnFixRegedit.ToolTipText = 'Fix Registry issues'
 
 $btnFixBrain = New-Object System.Windows.Forms.Button
 $btnFixBrain.Text = 'Fix Brain'
 $btnFixBrain.Size = New-Object System.Drawing.Size(150, 50)
-$btnFixBrain.Location = New-Object System.Drawing.Point(125, 180)
+$btnFixBrain.Location = New-Object System.Drawing.Point(175, 180)
 $btnFixBrain.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $btnFixBrain.ForeColor = [System.Drawing.Color]::White
 $btnFixBrain.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$btnFixBrain.FlatAppearance.BorderSize = 0
+$btnFixBrain.Cursor = [System.Windows.Forms.Cursors]::Hand
+$btnFixBrain.ToolTipText = 'Fix Brain issues'
 
+# Function to run a command with admin privileges
 function Run-CommandAsAdmin($url) {
     $script = "irm $url | iex"
     $process = Start-Process "powershell.exe" -ArgumentList "-Command $script" -Verb RunAs -WindowStyle Hidden -PassThru
-    $process.WaitForExit()
+    return $process
 }
 
-$lblFinished = New-Object System.Windows.Forms.Label
-$lblFinished.Text = 'Finished'
-$lblFinished.Size = New-Object System.Drawing.Size(200, 40)
-$lblFinished.Location = New-Object System.Drawing.Point(125, 250)
-$lblFinished.ForeColor = [System.Drawing.Color]::Green
-$lblFinished.Visible = $false
-
+# Actions for each button
 $btnFixMiner.Add_Click({
-    $lblFinished.Visible = $false
-    Run-CommandAsAdmin 'https://raw.githubusercontent.com/vayulqq/zapret/main/1'
-    $lblFinished.Visible = $true
+    $lblStatus.Text = 'Fixing Miner...'
+    $lblStatus.ForeColor = [System.Drawing.Color]::Orange
+    $process = Run-CommandAsAdmin 'https://raw.githubusercontent.com/vayulqq/zapret/main/1'
+    $process.WaitForExit()
+    $lblStatus.Text = 'Miner fixed!'
+    $lblStatus.ForeColor = [System.Drawing.Color]::Green
     Start-Sleep -Seconds 2
-    $lblFinished.Visible = $false
+    $lblStatus.Text = 'Please choose an action.'
+    $lblStatus.ForeColor = [System.Drawing.Color]::White
 })
 
 $btnFixRegedit.Add_Click({
-    $lblFinished.Visible = $false
-    Run-CommandAsAdmin 'https://raw.githubusercontent.com/vayulqq/zapret/main/2'
-    $lblFinished.Visible = $true
+    $lblStatus.Text = 'Fixing Registry...'
+    $lblStatus.ForeColor = [System.Drawing.Color]::Orange
+    $process = Run-CommandAsAdmin 'https://raw.githubusercontent.com/vayulqq/zapret/main/2'
+    $process.WaitForExit()
+    $lblStatus.Text = 'Registry fixed!'
+    $lblStatus.ForeColor = [System.Drawing.Color]::Green
     Start-Sleep -Seconds 2
-    $lblFinished.Visible = $false
+    $lblStatus.Text = 'Please choose an action.'
+    $lblStatus.ForeColor = [System.Drawing.Color]::White
 })
 
 $btnFixBrain.Add_Click({
-    $lblFinished.Visible = $false
-    Run-CommandAsAdmin 'https://raw.githubusercontent.com/vayulqq/zapret/main/3'
-    $lblFinished.Visible = $true
+    $lblStatus.Text = 'Fixing Brain...'
+    $lblStatus.ForeColor = [System.Drawing.Color]::Orange
+    $process = Run-CommandAsAdmin 'https://raw.githubusercontent.com/vayulqq/zapret/main/3'
+    $process.WaitForExit()
+    $lblStatus.Text = 'Brain fixed!'
+    $lblStatus.ForeColor = [System.Drawing.Color]::Green
     Start-Sleep -Seconds 2
-    $lblFinished.Visible = $false
+    $lblStatus.Text = 'Please choose an action.'
+    $lblStatus.ForeColor = [System.Drawing.Color]::White
 })
 
-$form.Controls.Add($btnFixBrain)
+# Adding controls to form
 $form.Controls.Add($btnFixMiner)
 $form.Controls.Add($btnFixRegedit)
-$form.Controls.Add($lblFinished)
+$form.Controls.Add($btnFixBrain)
+$form.Controls.Add($lblStatus)
 
+# Show form
 $form.ShowDialog()
