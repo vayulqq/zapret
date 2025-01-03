@@ -8,7 +8,7 @@ try {
         try {
             $parameters = Get-ItemProperty -Path $subKey.PSPath -ErrorAction SilentlyContinue
             if ($parameters -and $parameters.PSObject.Properties.Name -contains "MinimumStackCommitInBytes") {
-                Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction Stop -Confirm:$false
+                Remove-ItemProperty -Path $subKey.PSPath -Name MinimumStackCommitInBytes -ErrorAction SilentlyContinue -Confirm:$false
             }
         } catch {
         }
