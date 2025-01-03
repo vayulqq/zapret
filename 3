@@ -65,7 +65,6 @@ $tasksToRemove = @(
 foreach ($task in $tasksToRemove) {
     schtasks.exe /Delete /F /TN $task
 }
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 $desktopPath = [Environment]::GetFolderPath("Desktop")
 $items = Get-ChildItem -Path $desktopPath -Force
 foreach ($item in $items) {
