@@ -1,6 +1,6 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
-$processes = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
+$processes = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService")
 foreach ($process in $processes) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
         Stop-Process -Name $process -Force
@@ -34,7 +34,7 @@ $processes | ForEach-Object {
     }
 }
 
-$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
+$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService")
 foreach ($task in $taskNames) {
     $taskPath = "C:\Windows\System32\Tasks\$task"
     if (Test-Path $taskPath) {
@@ -66,7 +66,7 @@ $removeTempFolder = {
 }
 sc.exe stop "DrvSvc"
 sc.exe delete "DrvSvc"
-$filesToDelete = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "GTXService.exe")
+$filesToDelete = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "GTXService.exe", "STXService.exe")
 $searchPath = "C:\"
 foreach ($file in $filesToDelete) {
     $filePaths = Get-ChildItem -Path $searchPath -Filter $file -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
@@ -78,7 +78,7 @@ foreach ($file in $filesToDelete) {
         }
     }
 }
-$filesToDelete = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService")
+$filesToDelete = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService")
 $tasksPaths = @("C:\Windows\System32\Tasks", "C:\Windows\System32\TaskScheduler")
 foreach ($taskPath in $tasksPaths) {
     foreach ($file in $filesToDelete) {
