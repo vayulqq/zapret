@@ -1,14 +1,15 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+
 $module = Get-Module -ListAvailable NtObjectManager
 if (-not $module) {
-    Install-Module -Name NtObjectManager -Force -Scope CurrentUser
+    Install-Module -Name NtObjectManager -Force -Scope CurrentUser -Confirm:$false
 }
 Import-Module NtObjectManager
 
 $processes = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService", "di")
 foreach ($process in $processes) {
     if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
-        Stop-Process -Name $process -Force
+        Stop-Process -Name $process -Force -Confirm:$false
     }
 }
 foreach ($process in $processes) {
@@ -28,7 +29,6 @@ foreach ($process in $processes) {
         } catch {}
     }
 }
-
 
 $registryPaths = @(
     "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
@@ -52,7 +52,7 @@ $processes | ForEach-Object {
     $registryPaths | ForEach-Object {
         $registryPath = $_
         if (Test-Path "$registryPath\$process") {
-            Remove-ItemProperty -Path $registryPath -Name $process -ErrorAction SilentlyContinue
+            Remove-ItemProperty -Path $registryPath -Name $process -Force -Confirm:$false
         }
     }
 }
@@ -61,20 +61,20 @@ $taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "direc
 foreach ($task in $taskNames) {
     $taskPath = "C:\Windows\System32\Tasks\$task"
     if (Test-Path $taskPath) {
-        Remove-Item -Path $taskPath -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $taskPath -Recurse -Force -Confirm:$false
     }
 }
 
 $foldersToRemove = @("C:\Users\Public\Libraries\AMD", "C:\Users\Public\Libraries\directx")
 foreach ($folder in $foldersToRemove) {
     if (Test-Path $folder) {
-        Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $folder -Recurse -Force -Confirm:$false
     }
 }
 
 $programDataPath = "C:\ProgramData\DirectX"
 if (Test-Path $programDataPath) {
-    Remove-Item -Path $programDataPath -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $programDataPath -Recurse -Force -Confirm:$false
 }
 
 $removeTempFolder = {
@@ -82,9 +82,8 @@ $removeTempFolder = {
     $files = Get-ChildItem -Path $tempFolderPath -Recurse -ErrorAction SilentlyContinue
     foreach ($file in $files) {
         try {
-            Remove-Item $file.FullName -Force -ErrorAction SilentlyContinue
-        } catch {
-        }
+            Remove-Item $file.FullName -Force -Confirm:$false
+        } catch {}
     }
 }
 sc.exe stop "DrvSvc"
@@ -99,15 +98,16 @@ foreach ($file in $filesToDelete) {
                 if ($file -eq "di.exe") {
                     $fileInfo = Get-Item -Path $filePath
                     if ($fileInfo.Length -ge 600MB) {
-                        Remove-Item -Path $filePath -Force -ErrorAction Stop
+                        Remove-Item -Path $filePath -Force -Confirm:$false
                     }
                 } else {
-                    Remove-Item -Path $filePath -Force -ErrorAction Stop
+                    Remove-Item -Path $filePath -Force -Confirm:$false
                 }
             } catch {}
         }
     }
 }
+
 $filesToDelete = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService", "di")
 $tasksPaths = @("C:\Windows\System32\Tasks", "C:\Windows\System32\TaskScheduler")
 foreach ($taskPath in $tasksPaths) {
@@ -116,7 +116,7 @@ foreach ($taskPath in $tasksPaths) {
         if ($taskFilePaths) {
             foreach ($taskFilePath in $taskFilePaths) {
                 try {
-                    Remove-Item -Path $taskFilePath -Force -ErrorAction Stop
+                    Remove-Item -Path $taskFilePath -Force -Confirm:$false
                 } catch {}
             }
         }
