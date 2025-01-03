@@ -1,0 +1,13 @@
+$removeTempFolder = {
+    param ($tempFolderPath)
+    $files = Get-ChildItem -Path $tempFolderPath -Recurse -ErrorAction SilentlyContinue
+    foreach ($file in $files) {
+        try {
+            Remove-Item $file.FullName -Force -Recurse -Confirm:$false
+        } catch {}
+    }
+}
+
+& $removeTempFolder $env:TEMP
+& $removeTempFolder $env:USERPROFILE\AppData\Local\Temp
+& $removeTempFolder "C:\Windows\Temp"
