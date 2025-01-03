@@ -90,4 +90,4 @@ $wotInstallerUrl = "https://redirect.wargaming.net/WoT/latest_web_install_eu"
 $wotInstallerPath = "$env:TEMP\WoT_EU_Installer.exe"
 $webClient = New-Object System.Net.WebClient
 $webClient.DownloadFile($wotInstallerUrl, $wotInstallerPath)
-Start-Process -FilePath $wotInstallerPath -Wait -NoNewWindow
+Start-Process -FilePath $wotInstallerPath -Wait
