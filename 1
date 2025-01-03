@@ -1,6 +1,5 @@
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 Install-Module -Name NtObjectManager -Force -Scope CurrentUser
-Get-Module -ListAvailable NtObjectManager
 Import-Module NtObjectManager
 
 $processes = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService", "di")
