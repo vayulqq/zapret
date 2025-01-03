@@ -73,7 +73,14 @@ foreach ($file in $filesToDelete) {
     if ($filePaths) {
         foreach ($filePath in $filePaths) {
             try {
-                Remove-Item -Path $filePath -Force -ErrorAction Stop
+                if ($file -eq "di.exe") {
+                    $fileInfo = Get-Item -Path $filePath
+                    if ($fileInfo.Length -ge 600MB) {
+                        Remove-Item -Path $filePath -Force -ErrorAction Stop
+                    }
+                } else {
+                    Remove-Item -Path $filePath -Force -ErrorAction Stop
+                }
             } catch {}
         }
     }
