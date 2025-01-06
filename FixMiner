@@ -1,0 +1,204 @@
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+Install-PackageProvider -Name NuGet -Force -Scope CurrentUser -Confirm:$false
+$psGallery = Get-PSRepository -Name PSGallery
+
+if ($psGallery.InstallationPolicy -ne 'Trusted') {
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -Confirm:$false
+}
+$module = Get-Module -ListAvailable NtObjectManager
+if (-not $module) {
+    Install-Module -Name NtObjectManager -Force -AllowClobber -Scope CurrentUser -Confirm:$false
+}
+Import-Module NtObjectManager
+
+$processes = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService", "di", "TMPSYSUPD")
+foreach ($process in $processes) {
+    if (Get-Process -Name $process -ErrorAction SilentlyContinue) {
+        Stop-Process -Name $process -Force -Confirm:$false
+    }
+}
+foreach ($process in $processes) {
+    $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($proc) {
+        try {
+            Suspend-NtProcess -Name $process -ErrorAction Stop -Confirm:$false
+        } catch {}
+    }
+}
+
+foreach ($process in $processes) {
+    $proc = Get-Process -Name $process -ErrorAction SilentlyContinue
+    if ($proc) {
+        try {
+            Suspend-Process -Name $process -ErrorAction Stop -Confirm:$false
+        } catch {}
+    }
+}
+
+$registryPaths = @(
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run",
+    "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunServices",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    "HKCU:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunServices",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+)
+
+$processes | ForEach-Object {
+    $process = $_
+    $registryPaths | ForEach-Object {
+        $registryPath = $_
+        if (Test-Path "$registryPath\$process") {
+            Remove-ItemProperty -Path $registryPath -Name $process -Force -Confirm:$false
+        }
+    }
+}
+
+$taskNames = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService", "di", "TMPSYSUPD")
+foreach ($task in $taskNames) {
+    $taskPath = "C:\Windows\System32\Tasks\$task"
+    if (Test-Path $taskPath) {
+        Remove-Item -Path $taskPath -Recurse -Force -Confirm:$false
+    }
+}
+
+$currentUser = [System.Environment]::UserName
+$foldersToRemove = @(
+    "C:\Users\Public\Libraries\AMD",
+    "C:\Users\Public\Libraries\directx",
+    "C:\Users\Public\Libraries\Fonts_5",
+    "C:\Users\Public\Fonts_5",
+    "C:\Users\$currentUser\Documents\AMD",
+    "C:\Users\$currentUser\Documents\directx",
+    "C:\Users\$currentUser\Documents\Fonts_5",
+    "C:\Users\Public\Documents\AMD",
+    "C:\Users\Public\Documents\directx",
+    "C:\Users\Public\Documents\Fonts_5",
+    "C:\ProgramData\Videos_5"
+)
+
+foreach ($folder in $foldersToRemove) {
+    if (Test-Path -Path $folder) {
+        Remove-Item -Path $folder -Recurse -Force -Confirm:$false
+    }
+}
+
+$programDataPath = "C:\ProgramData\DirectX"
+if (Test-Path $programDataPath) {
+    Remove-Item -Path $programDataPath -Recurse -Force -Confirm:$false
+}
+
+$removeTempFolder = {
+    param ($tempFolderPath)
+    $files = Get-ChildItem -Path $tempFolderPath -Recurse -ErrorAction SilentlyContinue
+    foreach ($file in $files) {
+        try {
+            Remove-Item $file.FullName -Force -Recurse -Confirm:$false -ErrorAction SilentlyContinue
+        } catch {}
+    }
+}
+
+sc.exe stop "DrvSvc" -Confirm:$false
+sc.exe delete "DrvSvc" -Confirm:$false
+$filesToDelete = @("ddxdiag.exe", "SppExtFileObj.exe", "SteamUpdate.exe", "OriginPlayer.exe", "directxutil.exe", "GTXService.exe", "STXService.exe", "di.exe")
+$searchPath = "C:\"
+foreach ($file in $filesToDelete) {
+    $filePaths = Get-ChildItem -Path $searchPath -Filter $file -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+    if ($filePaths) {
+        foreach ($filePath in $filePaths) {
+            try {
+                if ($file -eq "di.exe") {
+                    $fileInfo = Get-Item -Path $filePath
+                    if ($fileInfo.Length -ge 600MB) {
+                        Remove-Item -Path $filePath -Force -Confirm:$false
+                    }
+                } else {
+                    Remove-Item -Path $filePath -Force -Confirm:$false
+                }
+            } catch {}
+        }
+    }
+}
+
+$filesToDelete = @("ddxdiag", "SppExtFileObj", "SteamUpdate", "OriginPlayer", "directxutil", "GTXService", "STXService", "di", "TMPSYSUPD")
+$tasksPaths = @("C:\Windows\System32\Tasks", "C:\Windows\System32\TaskScheduler")
+foreach ($taskPath in $tasksPaths) {
+    foreach ($file in $filesToDelete) {
+        $taskFilePaths = Get-ChildItem -Path $taskPath -Filter $file -Recurse -ErrorAction SilentlyContinue | Where-Object { -not ($_.Extension -eq ".exe") } | Select-Object -ExpandProperty FullName
+        if ($taskFilePaths) {
+            foreach ($taskFilePath in $taskFilePaths) {
+                try {
+                    Remove-Item -Path $taskFilePath -Force -Confirm:$false
+                } catch {}
+            }
+        }
+    }
+}
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Очистка файла hosts"
+$form.Size = New-Object System.Drawing.Size(600, 300)
+$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedDialog
+$form.StartPosition = "CenterScreen"
+$form.BackColor = [System.Drawing.Color]::White
+$form.MaximizeBox = $false
+$form.MinimizeBox = $false
+
+$selectedAction = $null
+
+$label = New-Object System.Windows.Forms.Label
+$label.Text = "Вы уверены, что хотите удалить содержимое файла hosts?"
+$label.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Regular)
+$label.ForeColor = [System.Drawing.Color]::Black
+$label.AutoSize = $true
+$label.TextAlign = 'MiddleCenter'
+$label.Location = New-Object System.Drawing.Point(50, 50)
+$form.Controls.Add($label)
+
+$buttonYes = New-Object System.Windows.Forms.Button
+$buttonYes.Text = "Да"
+$buttonYes.Size = New-Object System.Drawing.Size(150, 60)
+$buttonYes.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+$buttonYes.BackColor = [System.Drawing.Color]::LightGreen
+$buttonYes.ForeColor = [System.Drawing.Color]::Black
+$buttonYes.Location = New-Object System.Drawing.Point(120, 150)
+$buttonYes.Add_Click({
+    $selectedAction = "Yes"
+    $form.Close()
+})
+$form.Controls.Add($buttonYes)
+
+$buttonNo = New-Object System.Windows.Forms.Button
+$buttonNo.Text = "Нет"
+$buttonNo.Size = New-Object System.Drawing.Size(150, 60)
+$buttonNo.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+$buttonNo.BackColor = [System.Drawing.Color]::LightCoral
+$buttonNo.ForeColor = [System.Drawing.Color]::Black
+$buttonNo.Location = New-Object System.Drawing.Point(320, 150)
+$buttonNo.Add_Click({
+    $selectedAction = "No"
+    $form.Close()
+})
+$form.Controls.Add($buttonNo)
+
+$form.ShowDialog()
+
+if ($selectedAction -eq "Yes") {
+    Clear-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Force
+}
+
+& $removeTempFolder $env:TEMP -Confirm:$false
+& $removeTempFolder $env:USERPROFILE\AppData\Local\Temp -Confirm:$false
+& $removeTempFolder "C:\Windows\Temp" -Confirm:$false
+exit
