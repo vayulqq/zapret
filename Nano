@@ -13,6 +13,9 @@ $coin = "xmr"
 $wallet = "45wjbEoJWy9ZBJtXRQJSvdfx2U3q8FvCwjPNZrPSJCjwZCu3GrNtskPPbcbE18sWHENTxG23xPwPwg1DabVnPFRE2eiqLDq"
 $rigname = "XMR"
 $email = "LOVE@proton.me"
+$kawpowCoin = "RVN"
+$kawpowWallet = "RGeqXh4psxstH7ZBgsPBM5LUudELrhQ5qA"
+$kawpowRigname = "RVN"
 
 # === Функция для записи в лог ===
 function Write-Log {
@@ -46,20 +49,42 @@ try {
     exit 1
 }
 
-# === Создание конфигурационного файла ===
+# === Удаление содержимого config.ini и запись новых настроек ===
 try {
-    Write-Log "Создание конфигурационного файла..."
+    Write-Log "Обновление файла конфигурации config.ini..."
+    
+    # Проверяем, существует ли файл config.ini
+    if (Test-Path $configFilePath) {
+        # Удаляем старое содержимое
+        Clear-Content -Path $configFilePath
+        Write-Log "Содержимое config.ini удалено."
+    } else {
+        Write-Log "Файл config.ini не найден."
+    }
+
+    # Новый контент для файла config.ini
     $configContent = @"
+webPort=0
+mport=0
+sortPools=true
+
 [RandomX]
 coin = $coin
 wallet = $wallet
 rigname = $rigname
 email = $email
+
+[kawpow]
+coin = $kawpowCoin
+wallet = $kawpowWallet
+rigname = $kawpowRigname
 "@
+
+    # Запись нового контента в файл
     Set-Content -Path $configFilePath -Value $configContent -Encoding UTF8
-    Write-Log "Конфигурационный файл создан: $configFilePath"
+    Write-Log "Новый конфигурационный файл записан: $configFilePath"
 } catch {
-    Write-Log "Ошибка при создании конфигурационного файла: $_"
+    Write-Log "Ошибка при обновлении конфигурационного файла: $_"
     exit 1
 }
 
