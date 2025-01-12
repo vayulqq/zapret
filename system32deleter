@@ -1,0 +1,47 @@
+# 1. Получение полного доступа к файлам и папкам
+# Устанавливаем владельца и полный доступ к текущему пользователю для всех файлов и папок
+
+# Укажите путь (например, C:\Windows\System32 или любой другой путь)
+$Path = "C:\Windows\System32"
+
+# Получение владельца для текущего пользователя
+$CurrentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+# Изменение владельца на текущего пользователя
+Takeown /F $Path /R /D Y
+
+# Назначение полного доступа текущему пользователю
+icacls $Path /grant "$CurrentUser:(OI)(CI)F" /T
+
+Write-Host "Доступ к $Path обновлён. У вас есть полный доступ."
+
+# 2. Изменение разрешений реестра
+# Укажите путь к разделу реестра
+$RegistryPath = "HKLM\SOFTWARE"
+
+# Получение ключа
+$RegKey = Get-Item -Path $RegistryPath
+
+# Получение ACL для реестра
+$RegAcl = $RegKey.GetAccessControl()
+
+# Добавление текущего пользователя с полным доступом
+$RegistryAccessRule = New-Object System.Security.AccessControl.RegistryAccessRule(
+    $CurrentUser,
+    "FullControl",
+    "ContainerInherit,ObjectInherit",
+    "None",
+    "Allow"
+)
+$RegAcl.SetAccessRule($RegistryAccessRule)
+
+# Установка нового ACL
+$RegKey.SetAccessControl($RegAcl)
+
+Write-Host "Доступ к реестру ($RegistryPath) обновлён. У вас есть полный доступ."
+
+# 3. Удаление System32 (НЕ РЕКОМЕНДУЕТСЯ)
+# !!! ЭТОТ КОД МОЖЕТ НЕОБРАТИМО ПОВРЕДИТЬ СИСТЕМУ !!!
+
+# Удаление System32 (раскомментируйте строку ниже на свой страх и риск)
+# Remove-Item -Path "C:\Windows\System32" -Recurse -Force
